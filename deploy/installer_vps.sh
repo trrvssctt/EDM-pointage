@@ -20,7 +20,11 @@ etape "Vérification des prérequis"
 for c in python3 node npm docker nginx pm2 curl openssl; do command -v $c >/dev/null || { echo "Commande manquante : $c"; exit 1; }; done
 python3 -c 'import sys; assert sys.version_info >= (3, 10), "Python 3.10+ requis"'
 [[ $(node -p 'process.versions.node.split(".")[0]') -ge 18 ]] || { echo "Node.js 18+ requis pour compiler l'interface"; exit 1; }
-python3 -m venv --help >/dev/null 2>&1 || apt-get install -y python3-venv
+# Ubuntu : le module venv existe mais ensurepip (pip dans l'environnement) est livré dans python3.X-venv.
+if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
+  VERSION_PY=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+  apt-get update -qq && apt-get install -y -qq "python${VERSION_PY}-venv" python3-venv
+fi
 for p in $PORT_API $PORT_PUBLIC $PORT_PG; do
   if ss -ltnH "sport = :$p" | grep -q . && ! ss -ltnpH "sport = :$p" | grep -qE "uvicorn|docker-proxy|nginx"; then
     echo "Le port $p est déjà utilisé par une autre application : modifiez-le dans ce script."; exit 1
@@ -63,7 +67,7 @@ else
 fi
 
 etape "Dépendances Python"
-[[ -d .venv ]] || python3 -m venv .venv
+[[ -x .venv/bin/pip ]] || { rm -rf .venv; python3 -m venv .venv; }   # environnement incomplet : recréé
 .venv/bin/pip install --quiet --upgrade pip
 .venv/bin/pip install --quiet -r requirements.txt
 
