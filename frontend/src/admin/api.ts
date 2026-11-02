@@ -60,14 +60,20 @@ export const api = {
   patch: async <T>(chemin: string, corps: unknown): Promise<T> => (await requete("PATCH", chemin, corps)).json(),
   delete: async <T>(chemin: string): Promise<T> => (await requete("DELETE", chemin)).json(),
   /** Télécharge un fichier (Excel, PDF) en conservant le nom proposé par le serveur. */
-  telecharger: async (chemin: string) => {
+  telecharger: async (chemin: string): Promise<string> => {
     const r = await requete("GET", chemin);
     const nom = r.headers.get("content-disposition")?.match(/filename="(.+)"/)?.[1] ?? "export";
+    const url = URL.createObjectURL(await r.blob());
+    // Le lien doit être dans la page pour que Firefox et Safari déclenchent le téléchargement.
     const lien = document.createElement("a");
-    lien.href = URL.createObjectURL(await r.blob());
+    lien.href = url;
     lien.download = nom;
+    lien.style.display = "none";
+    document.body.appendChild(lien);
     lien.click();
-    setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
+    lien.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return nom;
   },
 };
 

@@ -5,6 +5,7 @@ import io
 from datetime import datetime
 
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image as ImageExcel
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from reportlab.lib import colors
@@ -25,6 +26,13 @@ class Feuille:
         self.nom, self.colonnes, self.lignes, self.total, self.largeurs = nom, colonnes, lignes, total, largeurs
 
 
+def _logo_png(organisation: Organisation) -> bytes | None:
+    """Logo exploitable par les exports (PNG ou JPEG ; un logo SVG n'est pas intégré)."""
+    if organisation.logo and organisation.logo_type in ("image/png", "image/jpeg"):
+        return organisation.logo
+    return None
+
+
 def excel(organisation: Organisation, titre: str, sous_titre: str, feuilles: list[Feuille]) -> bytes:
     classeur = Workbook()
     classeur.remove(classeur.active)
@@ -33,12 +41,20 @@ def excel(organisation: Organisation, titre: str, sous_titre: str, feuilles: lis
     for f in feuilles:
         ws = classeur.create_sheet(f.nom[:31])
         ws.sheet_view.showGridLines = False
-        ws["A1"] = f"{organisation.nom} — {titre}"
-        ws["A1"].font = Font(bold=True, size=14, color=couleur)
-        ws["A2"] = sous_titre
-        ws["A2"].font = Font(size=10, color="5B6478")
-        ws["A3"] = f"Édité le {datetime.now():%d/%m/%Y à %H:%M}"
-        ws["A3"].font = Font(size=9, italic=True, color="8A93A6")
+        logo = _logo_png(organisation)
+        if logo:  # logo de l'entreprise en haut à gauche, sur la hauteur des 3 lignes de titre
+            image = ImageExcel(io.BytesIO(logo))
+            image.height, image.width = 62, round(62 * image.width / image.height)
+            ws.add_image(image, "A1")
+            for ligne in (1, 2, 3):
+                ws.row_dimensions[ligne].height = 21
+        colonne_titre = "B" if logo else "A"
+        ws[f"{colonne_titre}1"] = f"{organisation.nom} — {titre}"
+        ws[f"{colonne_titre}1"].font = Font(bold=True, size=14, color=couleur)
+        ws[f"{colonne_titre}2"] = sous_titre
+        ws[f"{colonne_titre}2"].font = Font(size=10, color="5B6478")
+        ws[f"{colonne_titre}3"] = f"Édité le {datetime.now():%d/%m/%Y à %H:%M}"
+        ws[f"{colonne_titre}3"].font = Font(size=9, italic=True, color="8A93A6")
         ws.append([])
         ws.append(f.colonnes)
         ligne_entete = ws.max_row
@@ -79,13 +95,14 @@ def pdf(organisation: Organisation, titre: str, sous_titre: str, indicateurs: li
     s_sous = ParagraphStyle("sous", fontName="Helvetica", fontSize=9.5, textColor=colors.HexColor("#5B6478"))
     s_cellule = ParagraphStyle("cellule", fontName="Helvetica", fontSize=8.5, leading=10.5)
 
-    entete = [Paragraph(f"{organisation.nom}<br/><font size=9 color='#5B6478'>{organisation.slogan}</font>",
-                        ParagraphStyle("org", fontName="Helvetica-Bold", fontSize=12, leading=15))]
-    if organisation.logo and organisation.logo_type in ("image/png", "image/jpeg"):
-        logo = ImageReader(io.BytesIO(organisation.logo))
-        entete.insert(0, Image(io.BytesIO(organisation.logo), width=14 * mm,
-                               height=14 * mm * logo.getSize()[1] / logo.getSize()[0]))
-    elements = [Table([entete], colWidths=[18 * mm, None] if len(entete) == 2 else [None],
+    entete = [Paragraph(f"{organisation.nom}<br/><font size=10 color='#5B6478'>{organisation.slogan}</font>",
+                        ParagraphStyle("org", fontName="Helvetica-Bold", fontSize=15, leading=19))]
+    logo_octets = _logo_png(organisation)
+    if logo_octets:
+        logo = ImageReader(io.BytesIO(logo_octets))
+        entete.insert(0, Image(io.BytesIO(logo_octets), width=24 * mm,
+                               height=24 * mm * logo.getSize()[1] / logo.getSize()[0]))
+    elements = [Table([entete], colWidths=[30 * mm, None] if len(entete) == 2 else [None],
                       style=[("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]),
                 Spacer(1, 6 * mm), Paragraph(titre, s_titre), Paragraph(sous_titre, s_sous), Spacer(1, 5 * mm)]
 

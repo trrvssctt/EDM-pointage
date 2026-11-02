@@ -1,11 +1,13 @@
 /** Rapports de présence, retards et absences (maquette « Rapports »), exports PDF et Excel. */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Download, FileText } from "lucide-react";
 import { api, parametres } from "../api";
 import { enOptions, useServices, useSites } from "../donnees";
 import type { Rapport } from "../types";
+import { useSession } from "../session";
+import { Logo } from "../composants/Logo";
 import { Bouton, Carte, Cellule, Champ, EnTetePage, Ligne, MessageErreur, Pastille, Radio, Segments, Selection, Tableau,
   cx, useNotifier } from "../composants/ui";
 import { dateCourte, dateIso, decalerJours, nombre, pourcent } from "../../commun/format";
@@ -27,6 +29,7 @@ function bornes(p: Periode, du: string, au: string): [string, string] {
 
 export function Rapports() {
   const notifier = useNotifier();
+  const { organisation } = useSession();
   const [recherche] = useSearchParams();
   const dateLien = recherche.get("date");
   const [type, setType] = useState<Type>("presence");
@@ -36,20 +39,36 @@ export function Rapports() {
   const [site, setSite] = useState("");
   const [service, setService] = useState("");
   const [regroupement, setRegroupement] = useState<"service" | "site" | "agent">("service");
-  const [demande, setDemande] = useState(0);
   const sites = useSites();
   const services = useServices();
   const [debut, fin] = bornes(periode, du, au);
+  // Une seule source de vérité : le rapport affiché ET les exports suivent toujours les filtres visibles.
   const filtres = { type_rapport: type, date_debut: debut, date_fin: fin, site_id: site, service_id: service, regroupement };
-  const [actifs, setActifs] = useState(filtres);
 
   const rapport = useQuery({
-    queryKey: ["rapport", actifs, demande], placeholderData: (p) => p,
-    queryFn: () => api.get<Rapport>(`/api/rapports${parametres(actifs)}`),
+    queryKey: ["rapport", filtres], placeholderData: (p) => p,
+    queryFn: () => api.get<Rapport>(`/api/rapports${parametres(filtres)}`),
   });
-  const generer = () => { setActifs(filtres); setDemande((n) => n + 1); };
-  const exporter = (format: "pdf" | "xlsx") =>
-    api.telecharger(`/api/rapports/export.${format}${parametres(actifs)}`).catch((e) => notifier(e.message, "danger"));
+  const resultat = useRef<HTMLDivElement>(null);
+  const [exportEnCours, setExportEnCours] = useState<"pdf" | "xlsx" | null>(null);
+  const generer = async () => {
+    const r = await rapport.refetch();  // recalcul forcé (données arrivées entre-temps)
+    if (r.isSuccess) {
+      notifier(`${r.data.titre} généré · ${r.data.periode}`);
+      resultat.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+  const exporter = async (format: "pdf" | "xlsx") => {
+    setExportEnCours(format);
+    try {
+      const nom = await api.telecharger(`/api/rapports/export.${format}${parametres(filtres)}`);
+      notifier(`Fichier téléchargé : ${nom}`);
+    } catch (e) {
+      notifier(e instanceof Error ? e.message : String(e), "danger");
+    } finally {
+      setExportEnCours(null);
+    }
+  };
   const r = rapport.data;
   const unJour = r && r.debut === r.fin;
   const libelleGroupe = { service: "Service", site: "Site", agent: "Agent" }[r?.regroupement as "service" ?? "service"] ?? "Service";
@@ -86,14 +105,22 @@ export function Rapports() {
           </div>
         </Carte>
 
+        <div ref={resultat} className="scroll-mt-6">
         <Carte titre={r ? `${r.titre} · ${unJour ? r.periode.replace("Journée du ", "") : r.periode}` : "Rapport"} sousTitre={r?.perimetre}
           action={r && <div className="flex gap-2">
-            <Bouton grand icone={Download} onClick={() => exporter("pdf")}>PDF</Bouton>
-            <Bouton grand icone={Download} onClick={() => exporter("xlsx")}>Excel</Bouton>
+            <Bouton grand icone={Download} chargement={exportEnCours === "pdf"} disabled={!!exportEnCours} onClick={() => exporter("pdf")}>PDF</Bouton>
+            <Bouton grand icone={Download} chargement={exportEnCours === "xlsx"} disabled={!!exportEnCours} onClick={() => exporter("xlsx")}>Excel</Bouton>
           </div>}>
           {rapport.error && <MessageErreur erreur={rapport.error} />}
           {r && (
             <>
+              <div className="mb-4 flex items-center gap-3 border-b border-bord pb-4">
+                <Logo taille={48} className="border border-bord" />
+                <div>
+                  <p className="text-[15px] font-semibold">{organisation?.nom}</p>
+                  <p className="text-xs text-encre-douce">{organisation?.slogan} · rapport édité le {dateCourte(new Date())}</p>
+                </div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 {[["Taux de présence", pourcent(r.indicateurs.taux_presence)], ["Retards", nombre(r.indicateurs.retards)],
                   ["Absences", nombre(r.indicateurs.absences)]].map(([l, v]) => (
@@ -129,10 +156,10 @@ export function Rapports() {
                   )}
                 </Tableau>
               </div>
-              {(actifs.type_rapport !== "presence" || r.regroupement === "agent") && r.detail.length > 0 && (
+              {(type !== "presence" || r.regroupement === "agent") && r.detail.length > 0 && (
                 <div className="mt-6">
                   <h3 className="mb-3 text-[15px] font-semibold">
-                    {actifs.type_rapport === "retards" ? "Détail des retards" : actifs.type_rapport === "absences" ? "Détail des absences" : "Détail journalier"}
+                    {type === "retards" ? "Détail des retards" : type === "absences" ? "Détail des absences" : "Détail journalier"}
                   </h3>
                   <Tableau largeurMin={860} entetes={["Date", "Agent", "Service", "Statut", "Arrivée", "Départ", "Retard", "Anomalies"]}>
                     {r.detail.slice(0, 200).map((j) => (
@@ -155,6 +182,7 @@ export function Rapports() {
             </>
           )}
         </Carte>
+        </div>
       </div>
     </>
   );

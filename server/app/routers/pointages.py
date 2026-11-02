@@ -10,7 +10,7 @@ from sqlalchemy import literal, or_, select, union_all, func
 from sqlalchemy.orm import Session, joinedload
 
 from server.app.database import get_db
-from server.app.models import (Agent, DemandeEnrolement, Pointage, Role, Site, StatutDemande, TentativeRejetee,
+from server.app.models import (Agent, DemandeEnrolement, Pointage, Role, Service, Site, StatutDemande, TentativeRejetee,
                                Terminal, TypeAppareil, Utilisateur)
 from server.app.routers.organisation import organisation
 from server.app.securite import auditer, exiger_droit, perimetre, utilisateur_courant
@@ -352,6 +352,11 @@ def _rapport(db, u, type_rapport, date_debut, date_fin, site_id, service_id, reg
     else:
         detail = [j.dict() for j in journees]
     site = db.get(Site, site_id).libelle_court if site_id else "Tous les sites"
+    if service_id:
+        service = db.get(Service, service_id)
+        site += f" · {service.nom if service else 'service inconnu'}"
+    if matricule:
+        site += f" · agent {matricule.strip().upper()}"
     return {"titre": {"presence": "Rapport de présence", "retards": "Rapport des retards",
                       "absences": "Rapport des absences"}[type_rapport],
             "periode": _periode(debut, fin), "perimetre": f"{site} · regroupé par {REGROUPEMENTS[regroupement][1].lower()}",
