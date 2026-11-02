@@ -230,10 +230,17 @@ function Capture({ agent }: { agent: Agent }) {
   // Caméra du poste d'enrôlement
   useEffect(() => {
     let flux: MediaStream | null = null;
-    navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 } })
+    // Les navigateurs n'exposent la caméra qu'aux pages sécurisées (HTTPS ou localhost).
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setErreurCamera("Caméra bloquée par le navigateur : cette page n’est pas en HTTPS. Ouvrez l’application par son "
+        + "adresse https:// (ou utilisez l’application mobile pour l’enrôlement).");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
       .then((f) => { flux = f; if (video.current) video.current.srcObject = f; })
-      .catch((e) => setErreurCamera(e.name === "NotAllowedError" ? "Accès à la caméra refusé par le navigateur."
-        : "Caméra indisponible. Vérifiez qu’elle est branchée et qu’aucune autre application ne l’utilise."));
+      .catch((e) => setErreurCamera(e.name === "NotAllowedError" ? "Accès à la caméra refusé : autorisez-la dans la barre d’adresse du navigateur."
+        : e.name === "NotReadableError" ? "Caméra déjà utilisée par une autre application (terminal de pointage, visioconférence…)."
+        : "Aucune caméra disponible : vérifiez qu’elle est branchée."));
     return () => flux?.getTracks().forEach((t) => t.stop());
   }, []);
 
@@ -364,7 +371,7 @@ function Capture({ agent }: { agent: Agent }) {
               completes ? "border-succes-vif" : analyse && enCours && conforme(analyse, enCours.pose) ? "border-succes-vif" : "border-white")} />
             <span className="absolute left-4 top-3 flex items-center gap-1.5 text-xs text-menu-texte"><Camera size={14} /> Aperçu caméra</span>
             {(consigne || completes) && (
-              <span className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-kiosque-voile px-5 py-2.5 text-[15px] font-medium text-white">
+              <span className="absolute bottom-4 left-1/2 w-max max-w-[90%] -translate-x-1/2 rounded-2xl bg-kiosque-voile px-5 py-2.5 text-center text-[15px] font-medium text-white">
                 {completes ? "Toutes les poses sont capturées" : consigne}
               </span>
             )}

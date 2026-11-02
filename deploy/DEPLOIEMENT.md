@@ -5,7 +5,7 @@
 | Code | `/opt/edm-pointage` (clone de `https://github.com/trrvssctt/EDM-pointage.git`) |
 | Base de données | conteneur Docker `edm-pointage-db` (postgres:16-alpine), `127.0.0.1:5442`, volume `edm_pointage_donnees` |
 | API + interface web | PM2 `edm-pointage` → uvicorn sur `127.0.0.1:8200` (jamais exposé directement) |
-| Accès public | Nginx, port **8095** → `http://185.215.165.43:8095` |
+| Accès public | Nginx : **https://185.215.165.43:8443** (administration, caméra) · **http://185.215.165.43:8095** (bornes et application mobile) |
 | Secrets (à sauvegarder hors du serveur) | `server/.env` (clés de session et de chiffrement biométrique), `deploy/.db.env` (mot de passe PostgreSQL) |
 
 Ces choix n'interfèrent avec aucune application existante (ports 3000-5678, 5440-5441, 8090 et sites Nginx déjà en place).
@@ -26,7 +26,7 @@ existantes sont conservées.
 
 ## 2. Après l'installation
 
-1. Ouvrir `http://185.215.165.43:8095`, se connecter avec `admin` / `Admin@2026`, puis **changer immédiatement** les mots
+1. Ouvrir `https://185.215.165.43:8443`, accepter une fois l'avertissement du certificat (Avancé › Continuer), se connecter avec `admin` / `Admin@2026`, puis **changer immédiatement** les mots
    de passe des comptes de départ (Mon compte, Utilisateurs et droits).
 2. **Sauvegarder** `server/.env` et `deploy/.db.env` hors du serveur : sans `EDM_CLE_BIOMETRIE`, tous les agents devraient
    être ré-enrôlés.
@@ -50,10 +50,15 @@ docker exec -it edm-pointage-db psql -U edm -d edm_pointage    # console SQL
 docker exec edm-pointage-db pg_dump -U edm edm_pointage | gzip > /root/edm_$(date +%F).sql.gz   # sauvegarde
 ```
 
-## 5. HTTPS (recommandé)
+## 5. HTTPS
 
-Les navigateurs n'autorisent la **caméra** (enrôlement depuis l'application web) qu'en HTTPS. Avec un nom de domaine
-pointant vers le VPS (par exemple `pointage.mon-domaine.ml`) :
+Les navigateurs n'autorisent la **caméra** (enrôlement depuis l'application web) qu'en HTTPS. Sans nom de domaine,
+l'installation crée un **certificat auto-signé** (`/etc/nginx/ssl/edm-pointage.crt`) pour `https://185.215.165.43:8443` :
+le navigateur affiche un avertissement la première fois, puis la caméra fonctionne. Les bornes et l'application mobile
+restent sur `http://…:8095` (elles refuseraient un certificat auto-signé).
+
+Pour un certificat reconnu (sans avertissement), avec un nom de domaine pointant vers le VPS (par exemple
+`pointage.mon-domaine.ml`) :
 
 ```bash
 cat > /etc/nginx/sites-available/edm-pointage-https <<'CONF'

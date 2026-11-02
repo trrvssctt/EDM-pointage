@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 RACINE=$PWD
 PORT_API=8200
 PORT_PUBLIC=8095
+PORT_HTTPS=8443
 PORT_PG=5442
 CONTENEUR_PG=edm-pointage-db
 IP_PUBLIQUE=${IP_PUBLIQUE:-185.215.165.43}
@@ -25,7 +26,7 @@ if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
   VERSION_PY=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
   apt-get update -qq && apt-get install -y -qq "python${VERSION_PY}-venv" python3-venv
 fi
-for p in $PORT_API $PORT_PUBLIC $PORT_PG; do
+for p in $PORT_API $PORT_PUBLIC $PORT_HTTPS $PORT_PG; do
   if ss -ltnH "sport = :$p" | grep -q . && ! ss -ltnpH "sport = :$p" | grep -qE "uvicorn|docker-proxy|nginx"; then
     echo "Le port $p est déjà utilisé par une autre application : modifiez-le dans ce script."; exit 1
   fi
@@ -91,22 +92,34 @@ etape "Service PM2 (edm-pointage, 127.0.0.1:$PORT_API)"
 if pm2 describe edm-pointage >/dev/null 2>&1; then pm2 restart edm-pointage --update-env; else pm2 start deploy/ecosystem.config.cjs; fi
 pm2 save >/dev/null
 
-etape "Nginx (port public $PORT_PUBLIC)"
+etape "Nginx (http :$PORT_PUBLIC pour bornes et mobile, https :$PORT_HTTPS pour l'administration)"
+if [[ ! -s /etc/nginx/ssl/edm-pointage.crt ]]; then
+  mkdir -p /etc/nginx/ssl
+  openssl req -x509 -newkey rsa:2048 -nodes -days 825 -subj "/CN=$IP_PUBLIQUE/O=EDM pointage" \
+    -addext "subjectAltName=IP:$IP_PUBLIQUE" \
+    -keyout /etc/nginx/ssl/edm-pointage.key -out /etc/nginx/ssl/edm-pointage.crt 2>/dev/null
+  chmod 600 /etc/nginx/ssl/edm-pointage.key
+  echo "Certificat auto-signé créé (valable 825 jours)"
+fi
+mkdir -p /etc/nginx/snippets
+cp deploy/nginx-edm-pointage-proxy.conf /etc/nginx/snippets/edm-pointage-proxy.conf
 cp deploy/nginx-edm-pointage.conf /etc/nginx/sites-available/edm-pointage
 ln -sf /etc/nginx/sites-available/edm-pointage /etc/nginx/sites-enabled/edm-pointage
 nginx -t
 systemctl reload nginx
-if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then ufw allow $PORT_PUBLIC/tcp; fi
+if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then ufw allow $PORT_PUBLIC/tcp; ufw allow $PORT_HTTPS/tcp; fi
 
 etape "Vérification"
 for i in $(seq 1 30); do curl -fs http://127.0.0.1:$PORT_API/api/sante >/dev/null && break; sleep 1; done
 curl -fs http://127.0.0.1:$PORT_API/api/sante && echo "  ← API"
-curl -fs -o /dev/null -w "Interface via Nginx : HTTP %{http_code}\n" http://127.0.0.1:$PORT_PUBLIC/
+curl -fs -o /dev/null -w "Interface via Nginx (http)  : HTTP %{http_code}\n" http://127.0.0.1:$PORT_PUBLIC/
+curl -fsk -o /dev/null -w "Interface via Nginx (https) : HTTP %{http_code}\n" https://127.0.0.1:$PORT_HTTPS/
 cat <<FIN
 
 Déploiement terminé.
-  Application : $URL_PUBLIQUE
-  API (doc)   : $URL_PUBLIQUE/docs
+  Administration (caméra) : https://$IP_PUBLIQUE:$PORT_HTTPS   (accepter l'avertissement du certificat une fois)
+  Bornes et mobile        : $URL_PUBLIQUE
+  API (doc)               : $URL_PUBLIQUE/docs
   Comptes de départ : admin / Admin@2026, drh / Drh@2026 — À CHANGER IMMÉDIATEMENT (Mon compte).
   Configurations des bornes et du téléphone : $RACINE/terminal/config/
   À sauvegarder hors du serveur : server/.env et deploy/.db.env
