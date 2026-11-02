@@ -1,0 +1,18 @@
+sequenceDiagram
+  actor A as Agent
+  participant E as Écran kiosque
+  participant S as Service borne
+  participant L as File locale SQLite
+  participant C as Serveur central
+  A->>S: se place devant la caméra
+  S->>S: détection YuNet, visage stable 1 s
+  S->>S: gabarit SFace, identification 1:N (galerie locale)
+  S->>E: défi aléatoire (tourner la tête / cligner)
+  A->>S: exécute le défi
+  S->>S: vivacité validée + revérification de l'identité
+  S->>S: site autorisé ? anti-rebond 60 s ?
+  S->>C: dernier pointage du jour, tous sites (si réseau)
+  S->>L: enregistre {uuid, matricule, heure, ENTRÉE/SORTIE}
+  S->>E: « Entrée enregistrée » + « Ce n'est pas moi »
+  S->>C: envoi immédiat (si réseau)
+  C-->>S: acceptés / doublons / refusés

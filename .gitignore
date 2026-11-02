@@ -1,0 +1,25 @@
+# Environnements et dépendances
+.venv/
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+.pytest_cache/
+
+# Secrets et données (ne jamais versionner)
+server/.env
+server/*.db*
+terminal/config/*.json
+terminal/config/tester-iphone.*
+terminal/donnees/
+
+# Modèles téléchargés par setup.sh
+models/*.onnx
+
+# Application mobile (Expo)
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/expo-env.d.ts
+
+# Déploiement (secrets du VPS)
+deploy/.db.env

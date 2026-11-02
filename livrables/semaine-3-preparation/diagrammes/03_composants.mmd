@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph TERM["Borne de pointage (terminal/)"]
+    CAM[Caméra] --> SVC["service.py · automate de pointage"]
+    SVC --> MOT["moteur_facial.py · YuNet + SFace"]
+    SVC --> VIV["vivacite.py · défis anti-fraude"]
+    SVC --> NOY["noyau.py · règles métier"]
+    NOY --> STO[("stockage_local.py · SQLite + galerie chiffrée")]
+    NOY --> SYN["synchronisation.py"]
+    ECR["Écran React kiosque"] -- "/api/etat · /video.mjpg" --> SVC
+  end
+  subgraph MOB["Application iPhone (mobile/)"]
+    UI["Écrans Expo Router"] --> FIL[("File d'envoi")]
+    UI --> APIc["Client API + Keychain"]
+  end
+  subgraph SRV["Serveur central (server/)"]
+    R["Routeurs : auth · agents · enrôlements · pointages · référentiels · terminaux · mobile · organisation"]
+    SV["Services : présences · biométrie · exports · maintenance"]
+    SEC["Sécurité : JWT · droits · périmètres · chiffrement · audit"]
+    R --> SV & SEC
+  end
+  SYN -- HTTPS --> R
+  APIc -- HTTPS --> R
+  ADM["Administration React (frontend/)"] -- HTTPS --> R

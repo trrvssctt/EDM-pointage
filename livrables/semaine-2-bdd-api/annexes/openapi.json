@@ -1,0 +1,5614 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pointage biométrique multisite — API",
+    "description": "Gestion des agents, enrôlement facial, pointages multisites, rapports et terminaux.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/connexion": {
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Connexion",
+        "operationId": "connexion_api_auth_connexion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Connexion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReponseConnexion"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Connexion par identifiant, matricule ou e-mail ; renvoie un jeton de session, ou demande le code de vérification en deux étapes."
+      }
+    },
+    "/api/auth/deux-etapes": {
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Verifier Deux Etapes",
+        "operationId": "verifier_deux_etapes_api_auth_deux_etapes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeDeuxEtapes"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReponseConnexion"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Seconde étape de connexion : vérifie le code à 6 chiffres (TOTP) et ouvre la session."
+      }
+    },
+    "/api/auth/mot-de-passe-oublie": {
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Mot De Passe Oublie",
+        "description": "Signale la demande à l'administrateur (réinitialisation manuelle, sans envoi d'e-mail).",
+        "operationId": "mot_de_passe_oublie_api_auth_mot_de_passe_oublie_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MotDePasseOublie"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Session",
+        "operationId": "session_api_auth_session_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Utilisateur connecté et droits effectifs de son profil."
+      }
+    },
+    "/api/auth/mot-de-passe": {
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Changer Mot De Passe",
+        "operationId": "changer_mot_de_passe_api_auth_mot_de_passe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangementMotDePasse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Changement de son propre mot de passe (règle de robustesse appliquée)."
+      }
+    },
+    "/api/auth/deux-etapes/preparer": {
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Preparer Deux Etapes",
+        "description": "Génère un secret et le QR code à scanner avec une application d'authentification.",
+        "operationId": "preparer_deux_etapes_api_auth_deux_etapes_preparer_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/deux-etapes/activer": {
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Activer Deux Etapes",
+        "operationId": "activer_deux_etapes_api_auth_deux_etapes_activer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Donnees"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Active la vérification en deux étapes après saisie d'un premier code valide."
+      }
+    },
+    "/api/utilisateurs": {
+      "get": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Lister Utilisateurs",
+        "operationId": "lister_utilisateurs_api_utilisateurs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UtilisateurSortie"
+                  },
+                  "type": "array",
+                  "title": "Response Lister Utilisateurs Api Utilisateurs Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Liste des comptes utilisateurs avec profil, périmètre et dernière connexion (administrateur, DRH)."
+      },
+      "post": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Creer Utilisateur",
+        "operationId": "creer_utilisateur_api_utilisateurs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UtilisateurCreation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtilisateurSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Création d'un compte utilisateur (administrateur)."
+      }
+    },
+    "/api/droits": {
+      "get": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Matrice Droits",
+        "operationId": "matrice_droits_api_droits_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Matrice des droits par profil (Oui / Non / Son périmètre)."
+      }
+    },
+    "/api/utilisateurs/{utilisateur_id}": {
+      "put": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Modifier Utilisateur",
+        "operationId": "modifier_utilisateur_api_utilisateurs__utilisateur_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "utilisateur_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Utilisateur Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UtilisateurModification"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UtilisateurSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Modification d'un compte : profil, périmètre, activation, nouveau mot de passe, réinitialisation de la 2FA."
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "Authentification et utilisateurs"
+        ],
+        "summary": "Journal Audit",
+        "operationId": "journal_audit_api_audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 300,
+              "title": "Limite"
+            }
+          },
+          {
+            "name": "acteur",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Acteur"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Action"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Journal d'audit des actions sensibles, filtrable par utilisateur et par action."
+      }
+    },
+    "/api/organisation": {
+      "get": {
+        "tags": [
+          "Organisation"
+        ],
+        "summary": "Lire",
+        "description": "Public : nécessaire à l'affichage de l'écran de connexion et des terminaux.",
+        "operationId": "lire_api_organisation_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationSortie"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Organisation"
+        ],
+        "summary": "Modifier",
+        "operationId": "modifier_api_organisation_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganisationModification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Modification de l'identité de l'organisation (nom, couleurs, préfixe des matricules) et de la politique de sécurité."
+      }
+    },
+    "/api/organisation/logo": {
+      "get": {
+        "tags": [
+          "Organisation"
+        ],
+        "summary": "Logo",
+        "operationId": "logo_api_organisation_logo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "description": "Logo de l'organisation (public)."
+      },
+      "post": {
+        "tags": [
+          "Organisation"
+        ],
+        "summary": "Changer Logo",
+        "description": "Corps : {\"image\": \"data:image/png;base64,...\"} (500 Ko maximum).",
+        "operationId": "changer_logo_api_organisation_logo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Donnees"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/services": {
+      "get": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Lister Services",
+        "operationId": "lister_services_api_services_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceSortie"
+                  },
+                  "type": "array",
+                  "title": "Response Lister Services Api Services Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Liste des services."
+      },
+      "post": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Creer Service",
+        "operationId": "creer_service_api_services_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceEntree"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Création d'un service."
+      }
+    },
+    "/api/sites": {
+      "get": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Lister Sites",
+        "operationId": "lister_sites_api_sites_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SiteSortie"
+                  },
+                  "type": "array",
+                  "title": "Response Lister Sites Api Sites Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Liste des sites avec nombre de bornes, état agrégé et effectif rattaché."
+      },
+      "post": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Creer Site",
+        "operationId": "creer_site_api_sites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteEntree"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Création d'un site."
+      }
+    },
+    "/api/sites/{site_id}": {
+      "put": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Modifier Site",
+        "operationId": "modifier_site_api_sites__site_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SiteEntree"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Modification d'un site."
+      }
+    },
+    "/api/sites/{site_id}/pointage": {
+      "patch": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Autoriser Pointage",
+        "description": "Interrupteur « Pointage autorisé » de l'écran Sites et terminaux.",
+        "operationId": "autoriser_pointage_api_sites__site_id__pointage_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Donnees"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/horaires": {
+      "get": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Lister Horaires",
+        "operationId": "lister_horaires_api_horaires_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HoraireSortie"
+                  },
+                  "type": "array",
+                  "title": "Response Lister Horaires Api Horaires Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Liste des horaires de travail (début, fin, tolérance, jours travaillés)."
+      },
+      "post": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Creer Horaire",
+        "operationId": "creer_horaire_api_horaires_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoraireEntree"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraireSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Création d'un horaire de travail."
+      }
+    },
+    "/api/terminaux": {
+      "get": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Lister Terminaux",
+        "operationId": "lister_terminaux_api_terminaux_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TerminalSortie"
+                  },
+                  "type": "array",
+                  "title": "Response Lister Terminaux Api Terminaux Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Liste des terminaux et téléphones : état, dernier contact, version, pointages en attente."
+      },
+      "post": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Creer Terminal",
+        "operationId": "creer_terminal_api_terminaux_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TerminalEntree"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TerminalCle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Enregistrement d'une borne ou d'un téléphone ; la clé d'accès n'est renvoyée qu'une seule fois."
+      }
+    },
+    "/api/terminaux/{terminal_id}": {
+      "put": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Modifier Terminal",
+        "operationId": "modifier_terminal_api_terminaux__terminal_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "terminal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Terminal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TerminalModification"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TerminalSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Modification d'un terminal (emplacement, site, activation)."
+      }
+    },
+    "/api/terminaux/{terminal_id}/nouvelle-cle": {
+      "post": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Regenerer Cle",
+        "operationId": "regenerer_cle_api_terminaux__terminal_id__nouvelle_cle_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "terminal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Terminal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TerminalCle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Génère une nouvelle clé d'accès ; l'ancienne est immédiatement invalidée."
+      }
+    },
+    "/api/terminaux/{terminal_id}/synchroniser": {
+      "post": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Forcer Synchronisation",
+        "description": "Le terminal reçoit la consigne à son prochain contact et envoie immédiatement sa file d'attente.",
+        "operationId": "forcer_synchronisation_api_terminaux__terminal_id__synchroniser_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "terminal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Terminal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TerminalSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/synchronisation/lots": {
+      "get": {
+        "tags": [
+          "Sites, terminaux et référentiels"
+        ],
+        "summary": "Journal Synchronisation",
+        "operationId": "journal_synchronisation_api_synchronisation_lots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "terminal_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Terminal Id"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Journal des lots reçus des terminaux (reçus, doublons ignorés, refusés)."
+      }
+    },
+    "/api/agents": {
+      "get": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Lister",
+        "operationId": "lister_api_agents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "actif",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actif"
+            }
+          },
+          {
+            "name": "enrole",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrole"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "taille",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 20,
+              "title": "Taille"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResultats"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Liste paginée des agents du périmètre de l'utilisateur, avec recherche et filtres (service, site, statut, enrôlement)."
+      },
+      "post": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Creer",
+        "operationId": "creer_api_agents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentEntree"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Création d'un dossier agent (matricule unique, service, site de rattachement, horaire, sites autorisés)."
+      }
+    },
+    "/api/agents/{agent_id}": {
+      "get": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Consulter",
+        "operationId": "consulter_api_agents__agent_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Dossier d'un agent."
+      },
+      "put": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Modifier",
+        "operationId": "modifier_api_agents__agent_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentModification"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSortie"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Modification ou désactivation d'un dossier agent."
+      }
+    },
+    "/api/agents/enrolement/analyse": {
+      "post": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Analyser Image",
+        "description": "Contrôle qualité en direct pendant la capture (aucune image n'est conservée).",
+        "operationId": "analyser_image_api_agents_enrolement_analyse_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyseImage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/agents/{agent_id}/enrolement": {
+      "post": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Enroler",
+        "operationId": "enroler_api_agents__agent_id__enrolement_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Enrolement"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrolementResultat"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Enrôlement depuis le poste RH : 5 poses, consentement, contrôles (vivacité, photo de face, cohérence, unicité) puis gabarits chiffrés."
+      }
+    },
+    "/api/agents/{agent_id}/gabarits": {
+      "delete": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Supprimer Gabarits",
+        "operationId": "supprimer_gabarits_api_agents__agent_id__gabarits_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Suppression des données biométriques d'un agent (droit à l'effacement)."
+      }
+    },
+    "/api/enrolements/demandes": {
+      "get": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Lister",
+        "operationId": "lister_api_enrolements_demandes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "statut",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StatutDemande"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Statut"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Enrôlements proposés depuis l'application mobile, à valider par la DRH."
+      }
+    },
+    "/api/enrolements/demandes/{uuid}": {
+      "get": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Consulter",
+        "description": "Détail avec les photos (déchiffrées pour l'affichage, jamais stockées en clair).",
+        "operationId": "consulter_api_enrolements_demandes__uuid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/enrolements/demandes/{uuid}/valider": {
+      "post": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Valider",
+        "operationId": "valider_api_enrolements_demandes__uuid__valider_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Validation d'une demande : enregistrement des gabarits chiffrés, effacement des photos."
+      }
+    },
+    "/api/enrolements/demandes/{uuid}/rejeter": {
+      "post": {
+        "tags": [
+          "Agents et enrôlement"
+        ],
+        "summary": "Rejeter",
+        "operationId": "rejeter_api_enrolements_demandes__uuid__rejeter_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Corps"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rejet motivé d'une demande ; les photos sont effacées."
+      }
+    },
+    "/api/pointages": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Historique",
+        "operationId": "historique_api_pointages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date_debut",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Debut"
+            }
+          },
+          {
+            "name": "date_fin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Fin"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "terminal_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Terminal Id"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(|ENTREE|SORTIE|REFUSE)$",
+              "default": "",
+              "title": "Type"
+            }
+          },
+          {
+            "name": "alerte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(|HORS_RATTACHEMENT|DIFFERE|FRAUDE|ANNULE)$",
+              "default": "",
+              "title": "Alerte"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "taille",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 25,
+              "title": "Taille"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Historique unifié des pointages et des refus, filtrable (période, site, terminal, type, alerte, agent), paginé."
+      }
+    },
+    "/api/pointages/export.xlsx": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Exporter Historique",
+        "operationId": "exporter_historique_api_pointages_export_xlsx_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date_debut",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Debut"
+            }
+          },
+          {
+            "name": "date_fin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Fin"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "terminal_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Terminal Id"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Type"
+            }
+          },
+          {
+            "name": "alerte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Alerte"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Export Excel de l'historique filtré."
+      }
+    },
+    "/api/tentatives/{tentative_id}/traiter": {
+      "post": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Traiter Tentative",
+        "operationId": "traiter_tentative_api_tentatives__tentative_id__traiter_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tentative_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tentative Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Marque une tentative refusée (fraude, appel superviseur) comme traitée."
+      }
+    },
+    "/api/tableau-de-bord": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Tableau De Bord",
+        "operationId": "tableau_de_bord_api_tableau_de_bord_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jour",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jour"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Indicateurs du jour : présents, retards, absences, pointages en attente, présence par site, 7 jours, anomalies, terminaux."
+      }
+    },
+    "/api/tableau-de-bord/export.xlsx": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Exporter Journee",
+        "description": "« Exporter la journée » : présences de chaque agent et liste des pointages.",
+        "operationId": "exporter_journee_api_tableau_de_bord_export_xlsx_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jour",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jour"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rapports": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Rapport",
+        "operationId": "rapport_api_rapports_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type_rapport",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(presence|retards|absences)$",
+              "default": "presence",
+              "title": "Type Rapport"
+            }
+          },
+          {
+            "name": "date_debut",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Debut"
+            }
+          },
+          {
+            "name": "date_fin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Fin"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "regroupement",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(service|site|agent)$",
+              "default": "service",
+              "title": "Regroupement"
+            }
+          },
+          {
+            "name": "matricule",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Matricule"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rapport de présence, de retards ou d'absences par service, site ou agent sur une période."
+      }
+    },
+    "/api/rapports/export.xlsx": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Rapport Excel",
+        "operationId": "rapport_excel_api_rapports_export_xlsx_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type_rapport",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(presence|retards|absences)$",
+              "default": "presence",
+              "title": "Type Rapport"
+            }
+          },
+          {
+            "name": "date_debut",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Debut"
+            }
+          },
+          {
+            "name": "date_fin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Fin"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "regroupement",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(service|site|agent)$",
+              "default": "service",
+              "title": "Regroupement"
+            }
+          },
+          {
+            "name": "matricule",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Matricule"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Export Excel du rapport (synthèse + détail journalier)."
+      }
+    },
+    "/api/rapports/export.pdf": {
+      "get": {
+        "tags": [
+          "Pointages, tableau de bord et rapports"
+        ],
+        "summary": "Rapport Pdf",
+        "operationId": "rapport_pdf_api_rapports_export_pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type_rapport",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(presence|retards|absences)$",
+              "default": "presence",
+              "title": "Type Rapport"
+            }
+          },
+          {
+            "name": "date_debut",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Debut"
+            }
+          },
+          {
+            "name": "date_fin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Fin"
+            }
+          },
+          {
+            "name": "site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "regroupement",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(service|site|agent)$",
+              "default": "service",
+              "title": "Regroupement"
+            }
+          },
+          {
+            "name": "matricule",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Matricule"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Export PDF du rapport aux couleurs de l'organisation."
+      }
+    },
+    "/api/terminal/configuration": {
+      "get": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Configuration",
+        "description": "Contacté à chaque cycle : identité du site, marque de l'organisation et consignes en attente.",
+        "operationId": "configuration_api_terminal_configuration_get",
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terminal/logo": {
+      "get": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Logo",
+        "operationId": "logo_api_terminal_logo_get",
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Logo de l'organisation pour l'écran du terminal."
+      }
+    },
+    "/api/terminal/galerie": {
+      "get": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Telecharger Galerie",
+        "operationId": "telecharger_galerie_api_terminal_galerie_get",
+        "parameters": [
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Version"
+            }
+          },
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Galerie des gabarits des agents actifs (versionnée : rien n'est renvoyé si elle est inchangée)."
+      }
+    },
+    "/api/terminal/etat-agent/{matricule}": {
+      "get": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Etat Agent",
+        "description": "Dernier pointage du jour, tous sites confondus : permet de déduire ENTRÉE / SORTIE.",
+        "operationId": "etat_agent_api_terminal_etat_agent__matricule__get",
+        "parameters": [
+          {
+            "name": "matricule",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Matricule"
+            }
+          },
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terminal/pointages": {
+      "post": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Recevoir Pointages",
+        "description": "Réception idempotente : un événement (uuid) n'est enregistré qu'une seule fois.",
+        "operationId": "recevoir_pointages_api_terminal_pointages_post",
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotPointages"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatSynchro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/terminal/tentatives": {
+      "post": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Recevoir Tentatives",
+        "operationId": "recevoir_tentatives_api_terminal_tentatives_post",
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotTentatives"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatSynchro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Réception idempotente des tentatives refusées (visage inconnu, fraude, contestation, appel superviseur)."
+      }
+    },
+    "/api/terminal/annulations": {
+      "post": {
+        "tags": [
+          "Terminaux de pointage"
+        ],
+        "summary": "Recevoir Annulations",
+        "description": "« Ce n'est pas moi » : annule un pointage déjà transmis (seulement depuis le terminal émetteur).",
+        "operationId": "recevoir_annulations_api_terminal_annulations_post",
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotAnnulations"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultatSynchro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mobile/connexion": {
+      "post": {
+        "tags": [
+          "Application mobile"
+        ],
+        "summary": "Connexion",
+        "description": "Connexion d'un utilisateur, uniquement depuis un téléphone enregistré.",
+        "operationId": "connexion_api_mobile_connexion_post",
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Connexion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mobile/accueil": {
+      "get": {
+        "tags": [
+          "Application mobile"
+        ],
+        "summary": "Accueil",
+        "description": "Écran d'accueil : utilisateur, appareil, droits et activité récente de l'appareil.",
+        "operationId": "accueil_api_mobile_accueil_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mobile/enrolements": {
+      "post": {
+        "tags": [
+          "Application mobile"
+        ],
+        "summary": "Envoyer Enrolement",
+        "operationId": "envoyer_enrolement_api_mobile_enrolements_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvoiEnrolement"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Envoi idempotent d'un enrôlement photographié sur le terrain ; contrôles immédiats, puis attente de validation DRH."
+      }
+    },
+    "/api/mobile/enrolements/{uuid}": {
+      "get": {
+        "tags": [
+          "Application mobile"
+        ],
+        "summary": "Suivre Enrolement",
+        "operationId": "suivre_enrolement_api_mobile_enrolements__uuid__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Suivi d'une demande d'enrôlement (reçue, gabarit calculé, validée, rejetée)."
+      }
+    },
+    "/api/mobile/secours": {
+      "post": {
+        "tags": [
+          "Application mobile"
+        ],
+        "summary": "Pointage Secours",
+        "description": "Pointage photographié par un responsable quand la borne du site est en panne.\n\nLa reconnaissance est faite par le serveur (même modèle et même galerie que les bornes).",
+        "operationId": "pointage_secours_api_mobile_secours_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointageSecours"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mobile/secours/{uuid}/annuler": {
+      "post": {
+        "tags": [
+          "Application mobile"
+        ],
+        "summary": "Annuler Secours",
+        "description": "« Ce n'est pas moi » sur l'écran de résultat.",
+        "operationId": "annuler_secours_api_mobile_secours__uuid__annuler_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "X-Terminal-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Terminal-Key"
+            }
+          },
+          {
+            "name": "X-Terminal-Version",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Terminal-Version"
+            }
+          },
+          {
+            "name": "X-Terminal-En-Attente",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Terminal-En-Attente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sante": {
+      "get": {
+        "tags": [
+          "Supervision"
+        ],
+        "summary": "Sante",
+        "operationId": "sante_api_sante_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "description": "Disponibilité du serveur (supervision)."
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentEntree": {
+        "properties": {
+          "matricule": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Matricule"
+          },
+          "nom": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Nom"
+          },
+          "prenom": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Prenom"
+          },
+          "fonction": {
+            "type": "string",
+            "title": "Fonction",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          },
+          "telephone": {
+            "type": "string",
+            "title": "Telephone",
+            "default": ""
+          },
+          "service_id": {
+            "type": "integer",
+            "title": "Service Id"
+          },
+          "site_rattachement_id": {
+            "type": "integer",
+            "title": "Site Rattachement Id"
+          },
+          "horaire_id": {
+            "type": "integer",
+            "title": "Horaire Id"
+          },
+          "tous_sites": {
+            "type": "boolean",
+            "title": "Tous Sites",
+            "default": true
+          },
+          "sites_autorises": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Sites Autorises",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "matricule",
+          "nom",
+          "prenom",
+          "service_id",
+          "site_rattachement_id",
+          "horaire_id"
+        ],
+        "title": "AgentEntree"
+      },
+      "AgentModification": {
+        "properties": {
+          "nom": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nom"
+          },
+          "prenom": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prenom"
+          },
+          "fonction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonction"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "telephone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telephone"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          },
+          "site_rattachement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Rattachement Id"
+          },
+          "horaire_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horaire Id"
+          },
+          "tous_sites": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tous Sites"
+          },
+          "sites_autorises": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sites Autorises"
+          },
+          "actif": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actif"
+          }
+        },
+        "type": "object",
+        "title": "AgentModification"
+      },
+      "AgentSortie": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "matricule": {
+            "type": "string",
+            "title": "Matricule"
+          },
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "prenom": {
+            "type": "string",
+            "title": "Prenom"
+          },
+          "nom_complet": {
+            "type": "string",
+            "title": "Nom Complet"
+          },
+          "fonction": {
+            "type": "string",
+            "title": "Fonction"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "telephone": {
+            "type": "string",
+            "title": "Telephone"
+          },
+          "service_id": {
+            "type": "integer",
+            "title": "Service Id"
+          },
+          "service_nom": {
+            "type": "string",
+            "title": "Service Nom"
+          },
+          "site_rattachement_id": {
+            "type": "integer",
+            "title": "Site Rattachement Id"
+          },
+          "site_rattachement_nom": {
+            "type": "string",
+            "title": "Site Rattachement Nom"
+          },
+          "horaire_id": {
+            "type": "integer",
+            "title": "Horaire Id"
+          },
+          "horaire_nom": {
+            "type": "string",
+            "title": "Horaire Nom"
+          },
+          "tous_sites": {
+            "type": "boolean",
+            "title": "Tous Sites"
+          },
+          "sites_autorises": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Sites Autorises"
+          },
+          "actif": {
+            "type": "boolean",
+            "title": "Actif"
+          },
+          "nb_gabarits": {
+            "type": "integer",
+            "title": "Nb Gabarits"
+          },
+          "consentement_le": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consentement Le"
+          },
+          "cree_le": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Cree Le"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "matricule",
+          "nom",
+          "prenom",
+          "nom_complet",
+          "fonction",
+          "email",
+          "telephone",
+          "service_id",
+          "service_nom",
+          "site_rattachement_id",
+          "site_rattachement_nom",
+          "horaire_id",
+          "horaire_nom",
+          "tous_sites",
+          "sites_autorises",
+          "actif",
+          "nb_gabarits",
+          "consentement_le",
+          "cree_le"
+        ],
+        "title": "AgentSortie"
+      },
+      "AnalyseImage": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "AnalyseImage"
+      },
+      "ChangementMotDePasse": {
+        "properties": {
+          "ancien": {
+            "type": "string",
+            "title": "Ancien"
+          },
+          "nouveau": {
+            "type": "string",
+            "title": "Nouveau"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ancien",
+          "nouveau"
+        ],
+        "title": "ChangementMotDePasse"
+      },
+      "CodeDeuxEtapes": {
+        "properties": {
+          "jeton_temporaire": {
+            "type": "string",
+            "title": "Jeton Temporaire"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 6,
+            "minLength": 6,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jeton_temporaire",
+          "code"
+        ],
+        "title": "CodeDeuxEtapes"
+      },
+      "Connexion": {
+        "properties": {
+          "identifiant": {
+            "type": "string",
+            "title": "Identifiant",
+            "description": "Matricule, identifiant ou adresse e-mail"
+          },
+          "mot_de_passe": {
+            "type": "string",
+            "title": "Mot De Passe"
+          },
+          "rester_connecte": {
+            "type": "boolean",
+            "title": "Rester Connecte",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifiant",
+          "mot_de_passe"
+        ],
+        "title": "Connexion"
+      },
+      "Enrolement": {
+        "properties": {
+          "consentement": {
+            "type": "boolean",
+            "title": "Consentement"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImagePose"
+            },
+            "type": "array",
+            "maxItems": 15,
+            "minItems": 1,
+            "title": "Images"
+          }
+        },
+        "type": "object",
+        "required": [
+          "consentement",
+          "images"
+        ],
+        "title": "Enrolement"
+      },
+      "EnrolementResultat": {
+        "properties": {
+          "gabarits_enregistres": {
+            "type": "integer",
+            "title": "Gabarits Enregistres"
+          },
+          "images_rejetees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Images Rejetees"
+          },
+          "vivacite": {
+            "type": "boolean",
+            "title": "Vivacite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gabarits_enregistres",
+          "images_rejetees",
+          "vivacite"
+        ],
+        "title": "EnrolementResultat"
+      },
+      "EnvoiEnrolement": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 8,
+            "title": "Uuid"
+          },
+          "agent_id": {
+            "type": "integer",
+            "title": "Agent Id"
+          },
+          "consentement": {
+            "type": "boolean",
+            "title": "Consentement"
+          },
+          "capture_le": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Capture Le"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImagePose"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Images"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "agent_id",
+          "consentement",
+          "capture_le",
+          "images"
+        ],
+        "title": "EnvoiEnrolement"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HoraireEntree": {
+        "properties": {
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "heure_debut": {
+            "type": "string",
+            "format": "time",
+            "title": "Heure Debut"
+          },
+          "heure_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Heure Fin"
+          },
+          "tolerance_minutes": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Tolerance Minutes",
+            "default": 10
+          },
+          "jours_travailles": {
+            "type": "string",
+            "title": "Jours Travailles",
+            "default": "0,1,2,3,4"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nom",
+          "heure_debut",
+          "heure_fin"
+        ],
+        "title": "HoraireEntree"
+      },
+      "HoraireSortie": {
+        "properties": {
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "heure_debut": {
+            "type": "string",
+            "format": "time",
+            "title": "Heure Debut"
+          },
+          "heure_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Heure Fin"
+          },
+          "tolerance_minutes": {
+            "type": "integer",
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Tolerance Minutes",
+            "default": 10
+          },
+          "jours_travailles": {
+            "type": "string",
+            "title": "Jours Travailles",
+            "default": "0,1,2,3,4"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nom",
+          "heure_debut",
+          "heure_fin",
+          "id"
+        ],
+        "title": "HoraireSortie"
+      },
+      "ImagePose": {
+        "properties": {
+          "pose": {
+            "type": "string",
+            "pattern": "^(face|gauche|droite|haut|bas)$",
+            "title": "Pose"
+          },
+          "image": {
+            "type": "string",
+            "title": "Image",
+            "description": "Image JPEG/PNG en base64 (data-URL acceptée)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pose",
+          "image"
+        ],
+        "title": "ImagePose"
+      },
+      "LotAnnulations": {
+        "properties": {
+          "uuids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Uuids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuids"
+        ],
+        "title": "LotAnnulations"
+      },
+      "LotPointages": {
+        "properties": {
+          "pointages": {
+            "items": {
+              "$ref": "#/components/schemas/PointageTerminal"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Pointages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pointages"
+        ],
+        "title": "LotPointages"
+      },
+      "LotTentatives": {
+        "properties": {
+          "tentatives": {
+            "items": {
+              "$ref": "#/components/schemas/TentativeTerminal"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Tentatives"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tentatives"
+        ],
+        "title": "LotTentatives"
+      },
+      "MotDePasseOublie": {
+        "properties": {
+          "identifiant": {
+            "type": "string",
+            "title": "Identifiant"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifiant"
+        ],
+        "title": "MotDePasseOublie"
+      },
+      "OrganisationModification": {
+        "properties": {
+          "nom": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nom"
+          },
+          "sigle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigle"
+          },
+          "slogan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slogan"
+          },
+          "couleur_primaire": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Couleur Primaire"
+          },
+          "couleur_menu": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Couleur Menu"
+          },
+          "prefixe_matricule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefixe Matricule"
+          },
+          "deux_etapes_obligatoire_admin": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deux Etapes Obligatoire Admin"
+          },
+          "duree_conservation_jours": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 30.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duree Conservation Jours"
+          }
+        },
+        "type": "object",
+        "title": "OrganisationModification"
+      },
+      "OrganisationSortie": {
+        "properties": {
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "sigle": {
+            "type": "string",
+            "title": "Sigle"
+          },
+          "slogan": {
+            "type": "string",
+            "title": "Slogan"
+          },
+          "couleur_primaire": {
+            "type": "string",
+            "title": "Couleur Primaire"
+          },
+          "couleur_menu": {
+            "type": "string",
+            "title": "Couleur Menu"
+          },
+          "prefixe_matricule": {
+            "type": "string",
+            "title": "Prefixe Matricule"
+          },
+          "deux_etapes_obligatoire_admin": {
+            "type": "boolean",
+            "title": "Deux Etapes Obligatoire Admin"
+          },
+          "duree_conservation_jours": {
+            "type": "integer",
+            "title": "Duree Conservation Jours"
+          },
+          "a_un_logo": {
+            "type": "boolean",
+            "title": "A Un Logo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "nom",
+          "sigle",
+          "slogan",
+          "couleur_primaire",
+          "couleur_menu",
+          "prefixe_matricule",
+          "deux_etapes_obligatoire_admin",
+          "duree_conservation_jours"
+        ],
+        "title": "OrganisationSortie"
+      },
+      "PageResultats": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "elements": {
+            "items": {},
+            "type": "array",
+            "title": "Elements"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "elements"
+        ],
+        "title": "PageResultats"
+      },
+      "PointageSecours": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 8,
+            "title": "Uuid"
+          },
+          "horodatage": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Horodatage"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TypePointage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "image": {
+            "type": "string",
+            "title": "Image"
+          },
+          "hors_ligne": {
+            "type": "boolean",
+            "title": "Hors Ligne",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "horodatage",
+          "image"
+        ],
+        "title": "PointageSecours"
+      },
+      "PointageTerminal": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 8,
+            "title": "Uuid"
+          },
+          "matricule": {
+            "type": "string",
+            "title": "Matricule"
+          },
+          "horodatage": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Horodatage"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypePointage"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "default": 0.0
+          },
+          "hors_ligne": {
+            "type": "boolean",
+            "title": "Hors Ligne",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "matricule",
+          "horodatage",
+          "type"
+        ],
+        "title": "PointageTerminal"
+      },
+      "ReponseConnexion": {
+        "properties": {
+          "jeton": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jeton"
+          },
+          "deux_etapes_requise": {
+            "type": "boolean",
+            "title": "Deux Etapes Requise",
+            "default": false
+          },
+          "jeton_temporaire": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jeton Temporaire"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Session_"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ReponseConnexion"
+      },
+      "ResultatSynchro": {
+        "properties": {
+          "acceptes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Acceptes"
+          },
+          "doublons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Doublons"
+          },
+          "rejetes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Rejetes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "acceptes",
+          "doublons",
+          "rejetes"
+        ],
+        "title": "ResultatSynchro"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "ADMIN",
+          "DRH",
+          "RESPONSABLE"
+        ],
+        "title": "Role"
+      },
+      "ServiceEntree": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "nom"
+        ],
+        "title": "ServiceEntree"
+      },
+      "ServiceSortie": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "nom",
+          "id"
+        ],
+        "title": "ServiceSortie"
+      },
+      "Session_": {
+        "properties": {
+          "utilisateur": {
+            "$ref": "#/components/schemas/UtilisateurSortie"
+          },
+          "droits": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Droits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "utilisateur",
+          "droits"
+        ],
+        "title": "Session_"
+      },
+      "SiteEntree": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "nom_court": {
+            "type": "string",
+            "title": "Nom Court",
+            "default": ""
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeSite"
+          },
+          "ville": {
+            "type": "string",
+            "title": "Ville",
+            "default": ""
+          },
+          "actif": {
+            "type": "boolean",
+            "title": "Actif",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "nom",
+          "type"
+        ],
+        "title": "SiteEntree"
+      },
+      "SiteSortie": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "nom": {
+            "type": "string",
+            "title": "Nom"
+          },
+          "nom_court": {
+            "type": "string",
+            "title": "Nom Court",
+            "default": ""
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeSite"
+          },
+          "ville": {
+            "type": "string",
+            "title": "Ville",
+            "default": ""
+          },
+          "actif": {
+            "type": "boolean",
+            "title": "Actif",
+            "default": true
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nb_terminaux": {
+            "type": "integer",
+            "title": "Nb Terminaux",
+            "default": 0
+          },
+          "etat": {
+            "type": "string",
+            "title": "Etat",
+            "default": "AUCUN_TERMINAL"
+          },
+          "nb_agents": {
+            "type": "integer",
+            "title": "Nb Agents",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "nom",
+          "type",
+          "id"
+        ],
+        "title": "SiteSortie"
+      },
+      "StatutDemande": {
+        "type": "string",
+        "enum": [
+          "RECUE",
+          "GABARIT_CALCULE",
+          "VALIDEE",
+          "REJETEE"
+        ],
+        "title": "StatutDemande"
+      },
+      "TentativeTerminal": {
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 8,
+            "title": "Uuid"
+          },
+          "horodatage": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Horodatage"
+          },
+          "motif": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Motif"
+          },
+          "matricule_suppose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matricule Suppose"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "default": 0.0
+          },
+          "hors_ligne": {
+            "type": "boolean",
+            "title": "Hors Ligne",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "uuid",
+          "horodatage",
+          "motif"
+        ],
+        "title": "TentativeTerminal"
+      },
+      "TerminalCle": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "libelle": {
+            "type": "string",
+            "title": "Libelle"
+          },
+          "site_id": {
+            "type": "integer",
+            "title": "Site Id"
+          },
+          "site_nom": {
+            "type": "string",
+            "title": "Site Nom"
+          },
+          "actif": {
+            "type": "boolean",
+            "title": "Actif"
+          },
+          "dernier_contact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dernier Contact"
+          },
+          "adresse_ip": {
+            "type": "string",
+            "title": "Adresse Ip"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "nb_en_attente": {
+            "type": "integer",
+            "title": "Nb En Attente"
+          },
+          "synchro_demandee": {
+            "type": "boolean",
+            "title": "Synchro Demandee"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeAppareil"
+          },
+          "etat": {
+            "type": "string",
+            "title": "Etat"
+          },
+          "cle_api": {
+            "type": "string",
+            "title": "Cle Api"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "libelle",
+          "site_id",
+          "site_nom",
+          "actif",
+          "dernier_contact",
+          "adresse_ip",
+          "version",
+          "nb_en_attente",
+          "synchro_demandee",
+          "type",
+          "etat",
+          "cle_api"
+        ],
+        "title": "TerminalCle"
+      },
+      "TerminalEntree": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Code"
+          },
+          "libelle": {
+            "type": "string",
+            "title": "Libelle",
+            "default": ""
+          },
+          "site_id": {
+            "type": "integer",
+            "title": "Site Id"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeAppareil",
+            "default": "BORNE"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "site_id"
+        ],
+        "title": "TerminalEntree"
+      },
+      "TerminalModification": {
+        "properties": {
+          "libelle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Libelle"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          },
+          "actif": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actif"
+          }
+        },
+        "type": "object",
+        "title": "TerminalModification"
+      },
+      "TerminalSortie": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "libelle": {
+            "type": "string",
+            "title": "Libelle"
+          },
+          "site_id": {
+            "type": "integer",
+            "title": "Site Id"
+          },
+          "site_nom": {
+            "type": "string",
+            "title": "Site Nom"
+          },
+          "actif": {
+            "type": "boolean",
+            "title": "Actif"
+          },
+          "dernier_contact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dernier Contact"
+          },
+          "adresse_ip": {
+            "type": "string",
+            "title": "Adresse Ip"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "nb_en_attente": {
+            "type": "integer",
+            "title": "Nb En Attente"
+          },
+          "synchro_demandee": {
+            "type": "boolean",
+            "title": "Synchro Demandee"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TypeAppareil"
+          },
+          "etat": {
+            "type": "string",
+            "title": "Etat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "libelle",
+          "site_id",
+          "site_nom",
+          "actif",
+          "dernier_contact",
+          "adresse_ip",
+          "version",
+          "nb_en_attente",
+          "synchro_demandee",
+          "type",
+          "etat"
+        ],
+        "title": "TerminalSortie"
+      },
+      "TypeAppareil": {
+        "type": "string",
+        "enum": [
+          "BORNE",
+          "MOBILE"
+        ],
+        "title": "TypeAppareil"
+      },
+      "TypePointage": {
+        "type": "string",
+        "enum": [
+          "ENTREE",
+          "SORTIE"
+        ],
+        "title": "TypePointage"
+      },
+      "TypeSite": {
+        "type": "string",
+        "enum": [
+          "SIEGE",
+          "DIRECTION_REGIONALE",
+          "AGENCE",
+          "CENTRALE",
+          "SERVICE_TECHNIQUE"
+        ],
+        "title": "TypeSite"
+      },
+      "UtilisateurCreation": {
+        "properties": {
+          "identifiant": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Identifiant"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "nom_complet": {
+            "type": "string",
+            "title": "Nom Complet",
+            "default": ""
+          },
+          "fonction": {
+            "type": "string",
+            "title": "Fonction",
+            "default": ""
+          },
+          "mot_de_passe": {
+            "type": "string",
+            "title": "Mot De Passe"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifiant",
+          "mot_de_passe",
+          "role"
+        ],
+        "title": "UtilisateurCreation"
+      },
+      "UtilisateurModification": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "nom_complet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nom Complet"
+          },
+          "fonction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fonction"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          },
+          "actif": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actif"
+          },
+          "mot_de_passe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mot De Passe"
+          },
+          "desactiver_deux_etapes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desactiver Deux Etapes"
+          }
+        },
+        "type": "object",
+        "title": "UtilisateurModification"
+      },
+      "UtilisateurSortie": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "identifiant": {
+            "type": "string",
+            "title": "Identifiant"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "nom_complet": {
+            "type": "string",
+            "title": "Nom Complet"
+          },
+          "fonction": {
+            "type": "string",
+            "title": "Fonction"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          },
+          "perimetre": {
+            "type": "string",
+            "title": "Perimetre"
+          },
+          "actif": {
+            "type": "boolean",
+            "title": "Actif"
+          },
+          "deux_etapes": {
+            "type": "boolean",
+            "title": "Deux Etapes"
+          },
+          "derniere_connexion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derniere Connexion"
+          },
+          "reinitialisation_demandee": {
+            "type": "boolean",
+            "title": "Reinitialisation Demandee"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "identifiant",
+          "email",
+          "nom_complet",
+          "fonction",
+          "role",
+          "service_id",
+          "site_id",
+          "perimetre",
+          "actif",
+          "deux_etapes",
+          "derniere_connexion",
+          "reinitialisation_demandee"
+        ],
+        "title": "UtilisateurSortie"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

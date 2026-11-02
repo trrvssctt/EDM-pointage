@@ -1,0 +1,30 @@
+erDiagram
+  ORGANISATION { string nom string sigle bytes logo string couleurs int duree_conservation }
+  SERVICE { string code string nom }
+  SITE { string code string nom string type bool actif }
+  HORAIRE { time debut time fin int tolerance string jours }
+  TERMINAL { string code string type string empreinte_cle datetime dernier_contact int nb_en_attente }
+  AGENT { string matricule string nom string prenom bool tous_sites datetime consentement_le bool actif }
+  GABARIT_FACIAL { string pose bytes donnees_chiffrees float qualite }
+  POINTAGE { string uuid datetime horodatage string type float score bool hors_ligne bool secours bool annule }
+  TENTATIVE_REJETEE { string uuid datetime horodatage string motif bool traitee }
+  DEMANDE_ENROLEMENT { string uuid string statut bytes photos_chiffrees string motif }
+  LOT_SYNCHRONISATION { datetime date int recus int doublons }
+  UTILISATEUR { string identifiant string role bool deux_etapes datetime derniere_connexion }
+  JOURNAL_AUDIT { datetime date string acteur string action }
+  SITE ||--o{ TERMINAL : equipe
+  SERVICE ||--o{ AGENT : emploie
+  SITE ||--o{ AGENT : rattache
+  HORAIRE ||--o{ AGENT : applique
+  AGENT }o--o{ SITE : "sites autorises"
+  AGENT ||--o{ GABARIT_FACIAL : possede
+  AGENT ||--o{ POINTAGE : effectue
+  SITE ||--o{ POINTAGE : "lieu reel"
+  TERMINAL ||--o{ POINTAGE : enregistre
+  TERMINAL ||--o{ TENTATIVE_REJETEE : signale
+  TERMINAL ||--o{ LOT_SYNCHRONISATION : envoie
+  AGENT ||--o{ DEMANDE_ENROLEMENT : concerne
+  TERMINAL ||--o{ DEMANDE_ENROLEMENT : "envoyee par"
+  UTILISATEUR ||--o{ DEMANDE_ENROLEMENT : propose
+  SERVICE |o--o{ UTILISATEUR : perimetre
+  SITE |o--o{ UTILISATEUR : perimetre

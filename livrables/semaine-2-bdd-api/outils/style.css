@@ -1,0 +1,31 @@
+/* Mise en page du livrable (impression A4). */
+@page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+body { font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #142040; max-width: none; margin: 0; }
+h1 { font-size: 19pt; color: #12286B; border-bottom: 3px solid #1A3A8F; padding-bottom: 4px; margin-top: 0; break-after: avoid; }
+h2 { font-size: 13.5pt; color: #1A3A8F; margin-top: 20px; break-after: avoid; }
+h3 { font-size: 11.5pt; break-after: avoid; }
+p, li { orphans: 3; widows: 3; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0 14px; font-size: 9pt; break-inside: auto; }
+tr { break-inside: avoid; }
+th { background: #1A3A8F; color: #fff; text-align: left; padding: 5px 7px; font-weight: 600; }
+td { border-bottom: 1px solid #DCE2EE; padding: 4px 7px; vertical-align: top; }
+tbody tr:nth-child(even) td { background: #F6F8FC; }
+code { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 8.6pt; background: #EEF1F8; padding: 1px 4px; border-radius: 3px; }
+pre { background: #0F1A3A; color: #DCE6FF; padding: 10px 12px; border-radius: 6px; font-size: 8.4pt; white-space: pre-wrap; break-inside: avoid; }
+pre code { background: none; color: inherit; padding: 0; }
+img { max-width: 100%; display: block; margin: 10px auto; break-inside: avoid; }
+figure { margin: 10px 0; break-inside: avoid; }
+figcaption { text-align: center; font-size: 9pt; color: #4B5878; font-style: italic; }
+.saut { break-after: page; }
+/* Page de garde */
+#couverture { height: 245mm; display: flex; flex-direction: column; justify-content: center; break-after: page; }
+#couverture img { width: 110px; margin: 0 0 30px; }
+#couverture .bandeau { border-left: 6px solid #1A3A8F; padding-left: 18px; }
+#couverture .client { font-size: 12pt; color: #4B5878; text-transform: uppercase; letter-spacing: .08em; }
+#couverture h1.titre { font-size: 26pt; border: none; margin: 8px 0; }
+#couverture .soustitre { font-size: 14pt; color: #1A3A8F; }
+#couverture .meta { margin-top: 40px; font-size: 10.5pt; color: #4B5878; }
+header#title-block-header { display: none; }
+nav#TOC { break-after: page; }
+nav#TOC ul { list-style: none; padding-left: 14px; } nav#TOC > ul { padding-left: 0; }
+nav#TOC a { color: #142040; text-decoration: none; } nav#TOC > ul > li { margin-top: 6px; font-weight: 600; } nav#TOC li li { font-weight: 400; }

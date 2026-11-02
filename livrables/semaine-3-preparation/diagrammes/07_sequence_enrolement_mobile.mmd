@@ -1,0 +1,23 @@
+sequenceDiagram
+  actor R as Responsable (iPhone)
+  participant M as Application terrain
+  participant C as Serveur central
+  actor D as DRH (application web)
+  participant B as Bornes
+  R->>M: recherche l'agent (sans visage enrôlé)
+  M->>C: GET /api/agents?enrole=false
+  loop 5 poses
+    R->>M: photographie la pose
+    M->>C: POST /enrolement/analyse (qualité, orientation)
+    C-->>M: conforme ou « à reprendre »
+  end
+  R->>M: consentement + Envoyer
+  M->>C: POST /api/mobile/enrolements (uuid)
+  C->>C: gabarits, photo de face, cohérence, unicité
+  C-->>M: GABARIT_CALCULE ou « À refaire : motif »
+  D->>C: Enrôlement › À valider › Examiner les 5 photos
+  D->>C: Valider
+  C->>C: gabarits chiffrés enregistrés, photos effacées
+  M->>C: GET /api/mobile/enrolements/{uuid}
+  C-->>M: VALIDEE
+  B->>C: GET /galerie → nouvel agent reconnu partout

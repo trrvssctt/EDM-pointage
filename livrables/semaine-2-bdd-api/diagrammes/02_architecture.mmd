@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph S1["Site A — ex. Siège · Bamako"]
+    T1["Borne TRM-BKO-03<br/>caméra + écran tactile<br/>service local + file SQLite"]
+  end
+  subgraph S2["Site B — ex. Centrale de Sélingué"]
+    T2["Borne TRM-SEL-01<br/>fonctionne hors ligne"]
+  end
+  subgraph M["Terrain"]
+    P["iPhone MOB-BKO-07<br/>enrôlement · secours<br/>file d'envoi"]
+  end
+  subgraph C["Serveur central"]
+    API["API REST FastAPI<br/>règles métier · sécurité · exports"]
+    DB[("PostgreSQL<br/>agents · gabarits chiffrés<br/>pointages · audit")]
+    WEB["Administration web React"]
+  end
+  RH["Postes RH / responsables<br/>PC · tablette · smartphone"]
+  T1 -- "HTTPS · clé d'appareil" --> API
+  T2 -. "réseau intermittent<br/>synchronisation différée" .-> API
+  P -- "HTTPS · clé + jeton" --> API
+  API --- DB
+  RH -- "HTTPS · jeton de session" --> WEB --> API

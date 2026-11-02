@@ -1,0 +1,14 @@
+stateDiagram-v2
+  [*] --> ATTENTE
+  ATTENTE --> ANALYSE : visage net et assez grand
+  ANALYSE --> ATTENTE : visage perdu
+  ANALYSE --> INFO : inconnu / déjà pointé
+  ANALYSE --> DEFI : agent identifié
+  DEFI --> REFUS : délai dépassé ou visage changé
+  DEFI --> INFO : site non autorisé
+  DEFI --> SUCCES : défi réussi, pointage enregistré
+  SUCCES --> INFO : « Ce n'est pas moi »
+  SUCCES --> ATTENTE : après 5 s
+  REFUS --> ATTENTE : « Réessayer » ou 20 s
+  REFUS --> INFO : « Appeler le superviseur »
+  INFO --> ATTENTE : après 4 s

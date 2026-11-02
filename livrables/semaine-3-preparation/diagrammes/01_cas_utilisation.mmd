@@ -1,0 +1,25 @@
+flowchart LR
+  AG(("👤 Agent"))
+  RH(("👤 DRH"))
+  AD(("👤 Administrateur"))
+  RE(("👤 Responsable<br/>habilité"))
+  TE(("🖥️ Terminal /<br/>Téléphone"))
+  subgraph SYS["Système de pointage biométrique multisite"]
+    UC1([Pointer entrée / sortie<br/>sur tout site autorisé])
+    UC2([Contester un pointage<br/>« Ce n'est pas moi »])
+    UC3([Gérer les dossiers agents])
+    UC4([Enrôler un visage<br/>poste RH])
+    UC5([Proposer un enrôlement<br/>application mobile])
+    UC6([Valider / rejeter<br/>un enrôlement])
+    UC7([Consulter pointages,<br/>tableau de bord])
+    UC8([Générer rapports<br/>PDF / Excel])
+    UC9([Gérer sites, terminaux,<br/>utilisateurs, paramètres])
+    UC10([Pointage de secours])
+    UC11([Synchroniser après<br/>coupure réseau])
+    UC12([Consulter le journal d'audit])
+  end
+  AG --> UC1 & UC2
+  RH --> UC3 & UC4 & UC6 & UC7 & UC8 & UC12
+  RE --> UC3 & UC5 & UC7 & UC8 & UC10
+  AD --> UC9 & UC4 & UC6 & UC12
+  TE --> UC11

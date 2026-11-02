@@ -1,0 +1,15 @@
+sequenceDiagram
+  actor R as Responsable (iPhone)
+  participant M as Application terrain
+  participant F as File d'envoi
+  participant C as Serveur central
+  R->>M: Secours › choisit Entrée/Sortie, photographie l'agent
+  M->>F: ajoute {uuid, heure réelle, type, photo}
+  alt réseau disponible
+    F->>C: POST /api/mobile/secours
+    C->>C: reconnaissance (même galerie que les bornes), site autorisé, anti-rebond
+    C-->>M: agent, heure, site, rattachement (pointage marqué « secours »)
+  else pas de réseau
+    M-->>R: « Enregistré sur le téléphone »
+    F->>C: envoi au retour du réseau (heure réelle conservée)
+  end

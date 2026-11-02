@@ -1,0 +1,15 @@
+sequenceDiagram
+  participant T as Borne ou téléphone
+  participant C as Serveur central
+  Note over T,C: Coupure réseau
+  T->>T: pointages conservés localement (hors_ligne = vrai)
+  T--xC: essai de synchronisation (échec, nouvel essai toutes les 10 s)
+  Note over T,C: Retour du réseau
+  T->>C: GET /configuration (version, nombre en attente)
+  C-->>T: identité du site, consignes (forcer la synchro)
+  T->>C: GET /galerie?version=… (inchangée : rien à télécharger)
+  T->>C: POST /pointages (lots de 200, ordre chronologique)
+  C->>C: uuid déjà connu → doublon ignoré, sinon contrôle et insertion
+  C-->>T: acceptés · doublons · refusés
+  T->>T: lignes marquées transmises
+  T->>C: POST /tentatives · POST /annulations
