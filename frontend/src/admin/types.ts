@@ -65,6 +65,8 @@ export interface Analyse {
   nb_visages: number; luminosite: "CORRECTE" | "SOMBRE" | "SUREXPOSEE" | null; nettete: "BONNE" | "CORRECTE" | "FLOUE" | null;
   lacet: number | null; tangage: number | null; taille_ok: boolean; boite: number[] | null;
   largeur_image: number; hauteur_image: number;
+  /** Présents quand l'analyse porte sur un agent : identité contrôlée en direct. */
+  meme_personne?: boolean | null; deja_enrole?: { matricule: string; nom_complet: string; certain: boolean } | null;
 }
 export interface DemandeEnrolement {
   uuid: string; statut: "RECUE" | "GABARIT_CALCULE" | "VALIDEE" | "REJETEE"; motif: string; agent_id: number; agent: string;

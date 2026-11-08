@@ -164,6 +164,16 @@ class Galerie:
             return None, meilleur
         return self._proprietaires[i], meilleur
 
+    def classement(self, vecteur: np.ndarray, nombre: int = 2) -> list[tuple[str, float]]:
+        """Meilleure ressemblance par agent, de la plus forte à la plus faible (les `nombre` premiers)."""
+        if not self._proprietaires:
+            return []
+        meilleurs: dict[str, float] = {}
+        for matricule, score in zip(self._proprietaires, (self._matrice @ vecteur).tolist()):
+            if score > meilleurs.get(matricule, -1.0):
+                meilleurs[matricule] = score
+        return sorted(meilleurs.items(), key=lambda x: x[1], reverse=True)[:nombre]
+
     def score_agent(self, matricule: str, vecteur: np.ndarray) -> float:
         indices = [i for i, m in enumerate(self._proprietaires) if m == matricule]
         if not indices:

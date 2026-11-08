@@ -1,7 +1,7 @@
 /** Menu latéral (bureau) / barre supérieure et tiroir (tablette, mobile), d'après les maquettes. */
 import { useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Clock, FileText, LayoutGrid, LogOut, Menu, Monitor, ScanFace, Settings, ShieldCheck, User, X,
+import { Cctv, Clock, FileText, LayoutGrid, LogOut, Menu, Monitor, ScanFace, Settings, ShieldCheck, User, X,
   type LucideIcon } from "lucide-react";
 import { useSession, LIBELLES_ROLE } from "../session";
 import { Logo } from "./Logo";
@@ -19,6 +19,7 @@ export function Disposition({ children }: { children: ReactNode }) {
     { vers: "/", libelle: "Tableau de bord", icone: LayoutGrid, visible: true },
     { vers: "/agents", libelle: "Agents", icone: User, visible: true },
     { vers: "/enrolement", libelle: "Enrôlement", icone: ScanFace, visible: peut("biometrie.enroler") },
+    { vers: "/reconnaissance", libelle: "Poste de pointage simulé", icone: Cctv, visible: peut("biometrie.enroler") },
     { vers: "/pointages", libelle: "Pointages", icone: Clock, visible: peut("pointages.consulter") },
     { vers: "/rapports", libelle: "Rapports", icone: FileText, visible: peut("rapports.generer") },
   ];

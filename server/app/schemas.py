@@ -244,6 +244,8 @@ class Enrolement(BaseModel):
 
 class AnalyseImage(BaseModel):
     image: str
+    agent_id: int | None = None   # agent en cours d'enrôlement : recherche d'un visage déjà enrôlé
+    reference: str | None = None  # photo de face déjà prise : vérifie qu'il s'agit de la même personne
 
 
 class EnrolementResultat(BaseModel):

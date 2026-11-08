@@ -111,9 +111,17 @@ def modifier(agent_id: int, donnees: AgentModification, request: Request, acteur
 
 
 @router.post("/enrolement/analyse")
-def analyser_image(donnees: AnalyseImage, _: Utilisateur = Depends(exiger_droit("biometrie.proposer"))):
-    """Contrôle qualité en direct pendant la capture (aucune image n'est conservée)."""
+def analyser_image(donnees: AnalyseImage, u: Utilisateur = Depends(exiger_droit("biometrie.proposer")),
+                   db: Session = Depends(get_db)):
+    """Contrôle qualité en direct pendant la capture (aucune image n'est conservée).
+
+    Avec agent_id : signale aussitôt un visage déjà enrôlé pour un autre agent ; avec reference (photo de
+    face déjà prise) : vérifie que la même personne pose."""
+    if donnees.agent_id is not None and not perimetre(db.query(Agent), u).filter(Agent.id == donnees.agent_id).first():
+        raise HTTPException(404, "Agent introuvable ou hors de votre périmètre")
     try:
+        if donnees.agent_id is not None:
+            return biometrie.analyser(donnees.image, db, donnees.agent_id, donnees.reference)
         return biometrie.analyser(donnees.image)
     except ValueError as e:
         raise HTTPException(400, str(e))

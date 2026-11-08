@@ -14,7 +14,8 @@ import { C, F } from "@/lib/theme";
 
 interface Agent { id: number; matricule: string; nom_complet: string; service_nom: string; site_rattachement_nom: string; nb_gabarits: number }
 interface Analyse { nb_visages: number; luminosite: string | null; nettete: string | null; lacet: number | null; tangage: number | null;
-  taille_ok: boolean; score?: number | null; trop_tourne?: boolean }
+  taille_ok: boolean; score?: number | null; trop_tourne?: boolean;
+  meme_personne?: boolean | null; deja_enrole?: { matricule: string; nom_complet: string; certain: boolean } | null }
 type Pose = "face" | "gauche" | "droite" | "haut" | "bas";
 interface Capture extends Photo { analyse: Analyse | null }
 
@@ -38,6 +39,10 @@ function controler(a: Analyse, pose: Pose, captures: Partial<Record<Pose, { anal
   if (a.score != null && a.score < 0.85) return "Visage mal visible : évitez le contre-jour et cadrez tout le visage.";
   if (a.nettete === "FLOUE") return "La photo est floue : tenez le téléphone immobile.";
   if (a.luminosite === "SOMBRE") return "La photo est trop sombre : rapprochez-vous de la lumière.";
+  // Identité contrôlée par le serveur : visage déjà enrôlé, ou autre personne que sur la photo de face.
+  const d = a.deja_enrole;
+  if (d?.certain) return `Ce visage est déjà enrôlé pour ${d.nom_complet} (${d.matricule}).`;
+  if (a.meme_personne === false || d) return "Ce n’est pas la même personne que sur la photo de face : la même personne doit poser pour les 5 photos.";
   if (a.lacet === null) return null;
   const ecart = a.lacet - 0.5;
   if (pose === "face") return Math.abs(ecart) > FACE_MAX ? "L’agent doit regarder droit vers l’objectif." : null;
@@ -163,7 +168,9 @@ function Prise({ agent, captures, setCaptures, onRetour, onTermine }: {
       const photo = await prendrePhoto(camera.current);
       let analyse: Analyse | null = null;
       try {
-        analyse = await api.post<Analyse>("/api/agents/enrolement/analyse", { image: photo.dataUrl }, 12000);
+        analyse = await api.post<Analyse>("/api/agents/enrolement/analyse", {
+          image: photo.dataUrl, agent_id: agent.id,
+          reference: courante.pose === "face" ? undefined : captures.face?.dataUrl }, 12000);
       } catch (e) {
         if (!horsLigne(e)) throw e;  // hors ligne : contrôle fait par le serveur à la réception
       }

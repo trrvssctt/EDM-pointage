@@ -10,6 +10,7 @@ import { Connexion } from "./pages/Connexion";
 import { TableauDeBord } from "./pages/TableauDeBord";
 import { Agents } from "./pages/Agents";
 import { Enrolement } from "./pages/Enrolement";
+import { ReconnaissanceDirecte } from "./pages/ReconnaissanceDirecte";
 import { Pointages } from "./pages/Pointages";
 import { Rapports } from "./pages/Rapports";
 import { SitesTerminaux } from "./pages/SitesTerminaux";
@@ -30,6 +31,7 @@ function Application() {
         <Route path="/" element={<TableauDeBord />} />
         <Route path="/agents" element={<Agents />} />
         {peut("biometrie.enroler") && <Route path="/enrolement" element={<Enrolement />} />}
+        {peut("biometrie.enroler") && <Route path="/reconnaissance" element={<ReconnaissanceDirecte />} />}
         <Route path="/pointages" element={<Pointages />} />
         <Route path="/rapports" element={<Rapports />} />
         {u.role !== "RESPONSABLE" && <Route path="/sites" element={<SitesTerminaux />} />}

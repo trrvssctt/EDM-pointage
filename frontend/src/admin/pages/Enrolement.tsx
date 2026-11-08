@@ -195,6 +195,17 @@ function ChoixAgent() {
 
 interface CapturePose { image: string; lacet: number; tangage: number }
 
+/** Message bloquant si la personne devant la caméra n'est pas celle de la photo de face ou est déjà enrôlée. */
+function problemeIdentite(a: Analyse): string {
+  const d = a.deja_enrole;
+  if (d?.certain) return `Ce visage est déjà enrôlé pour ${d.nom_complet} (${d.matricule}) : capture bloquée.`;
+  if (a.meme_personne === false || d) {
+    return "Ce n’est pas la même personne que sur la photo de face : une seule personne doit poser du début à la fin"
+      + (d ? ` (ressemble à ${d.nom_complet}, ${d.matricule})` : "") + ". Sinon, recommencez la capture.";
+  }
+  return "";
+}
+
 /** Vrai si l'image analysée est exploitable et correspond à la pose demandée. */
 function conformeA(a: Analyse, pose: Pose, captures: Partial<Record<Pose, CapturePose>>): boolean {
   if (a.nb_visages !== 1 || !a.taille_ok || a.lacet === null || a.tangage === null || a.nettete === "FLOUE"
@@ -219,6 +230,7 @@ function Capture({ agent }: { agent: Agent }) {
   const [erreurCamera, setErreurCamera] = useState("");
   const [captures, setCaptures] = useState<Partial<Record<Pose, CapturePose>>>({});
   const [analyse, setAnalyse] = useState<Analyse | null>(null);
+  const [alerteIdentite, setAlerteIdentite] = useState("");
   const [consentement, setConsentement] = useState(false);
   const [tousSites, setTousSites] = useState(agent.tous_sites);
   const [termine, setTermine] = useState<{ vivacite: boolean; nombre: number } | null>(null);
@@ -254,6 +266,15 @@ function Capture({ agent }: { agent: Agent }) {
 
   const conforme = (a: Analyse, pose: Pose) => conformeA(a, pose, captures);
 
+  /** Contrôle d'identité d'une pose candidate (visage déjà enrôlé, même personne que la photo de face). */
+  const verifierIdentite = useCallback(async (img: string, pose: Pose, face?: string) => {
+    const v = await api.post<Analyse>("/api/agents/enrolement/analyse",
+      { image: img, agent_id: agent.id, reference: pose === "face" ? undefined : face });
+    const probleme = problemeIdentite(v);
+    setAlerteIdentite(probleme);
+    return !probleme;
+  }, [agent.id]);
+
   // Boucle d'analyse : une image toutes les 400 ms (état courant lu via des références)
   const capturesRef = useRef(captures);
   capturesRef.current = captures;
@@ -271,23 +292,26 @@ function Capture({ agent }: { agent: Agent }) {
         const a = await api.post<Analyse>("/api/agents/enrolement/analyse", { image: img });
         if (!actif) return;
         setAnalyse(a);
-        if (conformeA(a, pose.pose, capturesRef.current)) {
+        if (conformeA(a, pose.pose, capturesRef.current)
+          && await verifierIdentite(img, pose.pose, capturesRef.current.face?.image) && actif) {
           setCaptures((c) => ({ ...c, [pose.pose]: { image: img, lacet: a.lacet!, tangage: a.tangage! } }));
           setDebutPose(Date.now());
         }
       } catch { /* on passe à l'image suivante */ } finally { occupe = false; }
     }, 400);
     return () => { actif = false; clearInterval(minuteur); };
-  }, [termine, erreurCamera, image]);
+  }, [termine, erreurCamera, image, verifierIdentite]);
 
-  const captureManuelle = () => {
+  const captureManuelle = async () => {
     const img = image();
-    if (img && enCours && analyse?.nb_visages === 1 && analyse.lacet !== null && analyse.tangage !== null) {
-      setCaptures((c) => ({ ...c, [enCours.pose]: { image: img, lacet: analyse.lacet!, tangage: analyse.tangage! } }));
+    const a = analyse;
+    if (img && enCours && a?.nb_visages === 1 && a.lacet !== null && a.tangage !== null
+      && await verifierIdentite(img, enCours.pose, captures.face?.image)) {
+      setCaptures((c) => ({ ...c, [enCours.pose]: { image: img, lacet: a.lacet!, tangage: a.tangage! } }));
       setDebutPose(Date.now());
     }
   };
-  const recommencer = () => { setCaptures({}); setDebutPose(Date.now()); };
+  const recommencer = () => { setCaptures({}); setAlerteIdentite(""); setDebutPose(Date.now()); };
 
   const vivacite: { ton: Ton; texte: string } = captures.gauche && captures.droite
     ? Math.abs(captures.gauche.lacet - captures.droite.lacet) >= ECART_VIVACITE
@@ -376,6 +400,7 @@ function Capture({ agent }: { agent: Agent }) {
               </span>
             )}
           </div>
+          {alerteIdentite && <div className="mt-4"><MessageErreur erreur={alerteIdentite} /></div>}
           <div className="mt-4 grid grid-cols-5 gap-2">
             {POSES.map((p) => {
               const [texte, ton] = etatPose(p.pose);

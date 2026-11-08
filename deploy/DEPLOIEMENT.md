@@ -48,6 +48,7 @@ pm2 logs edm-pointage                      # journaux de l'API
 pm2 restart edm-pointage                   # redémarrage
 docker exec -it edm-pointage-db psql -U edm -d edm_pointage    # console SQL
 docker exec edm-pointage-db pg_dump -U edm edm_pointage | gzip > /root/edm_$(date +%F).sql.gz   # sauvegarde
+.venv/bin/python -m server.controle_galerie   # enrôlements suspects (plusieurs personnes sous un même agent), lecture seule
 ```
 
 ## 5. HTTPS

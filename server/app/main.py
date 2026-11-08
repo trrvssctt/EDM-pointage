@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 
 from server.app.database import initialiser_base
 from server.app.documentation_api import documenter
-from server.app.routers import agents, auth, enrolements, mobile, organisation, pointages, referentiels, terminal_api
+from server.app.routers import (agents, auth, enrolements, mobile, organisation, pointages, reconnaissance, referentiels,
+                                terminal_api)
 from server.app.services import maintenance
 
 # Interface d'administration (React) compilée par « npm run build » dans frontend/
@@ -27,7 +28,7 @@ app = FastAPI(title="Pointage biométrique multisite — API", version="1.0.0", 
               description="Gestion des agents, enrôlement facial, pointages multisites, rapports et terminaux.")
 
 for r in (auth.router, organisation.router, referentiels.router, agents.router, enrolements.router, pointages.router,
-          terminal_api.router, mobile.router):
+          terminal_api.router, mobile.router, reconnaissance.router):
     app.include_router(r)
 documenter(app)
 

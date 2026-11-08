@@ -211,6 +211,53 @@ def test_un_visage_ne_peut_appartenir_qu_a_un_agent(client, admin, creer_agent):
     assert r.status_code == 422 and "EDM0001" in r.text
 
 
+def test_analyse_signale_aussitot_un_visage_deja_enrole(client, admin, creer_agent):
+    a1, a2 = creer_agent("EDM0001"), creer_agent("EDM0002")
+    image = images_visage(1)[0]
+    libre = client.post("/api/agents/enrolement/analyse", json={"image": image, "agent_id": a2["id"]}, headers=admin).json()
+    assert libre["deja_enrole"] is None
+    assert client.post(f"/api/agents/{a1['id']}/enrolement", json=enrolement(), headers=admin).status_code == 200
+    r = client.post("/api/agents/enrolement/analyse", json={"image": image, "agent_id": a2["id"], "reference": image},
+                    headers=admin).json()
+    assert r["deja_enrole"]["matricule"] == "EDM0001" and r["deja_enrole"]["certain"]
+    assert r["meme_personne"] is True  # même photo que la référence
+
+
+def _vecteur(*composantes: tuple[int, float]):
+    """Vecteur unitaire synthétique : chaque « personne » est un axe, une pose est un mélange d'axes."""
+    import numpy as np
+    v = np.zeros(128, np.float32)
+    for axe, poids in composantes:
+        v[axe] = poids
+    return v / np.linalg.norm(v)
+
+
+def test_enrolement_refuse_les_poses_d_une_autre_personne(client, admin, creer_agent):
+    """Cas réel : deux personnes se relaient devant la caméra pendant l'enrôlement d'un même agent."""
+    a1, a2 = creer_agent("EDM0001"), creer_agent("EDM0002")
+    with SessionLocale() as db:  # EDM0001 (personne B, axe 1) est déjà enrôlé
+        from server.app.securite import chiffrer_gabarit
+        db.add(GabaritFacial(agent_id=a1["id"], pose="face", donnees_chiffrees=chiffrer_gabarit(_vecteur((1, 1.0)))))
+        db.commit()
+        face_a = _vecteur((0, 1.0))
+        # Pose « gauche » prise par C, non enrôlé : ressemblance 0,31 avec la face de A, acceptée par l'ancien seuil (0,28)…
+        gauche_c = _vecteur((0, 0.31), (3, 0.95))
+        try:
+            biometrie.verifier_gabarits(db, a2["id"], [("face", face_a), ("gauche", gauche_c)], True)
+            raise AssertionError("poses de deux personnes acceptées")
+        except biometrie.ErreurEnrolement as e:
+            assert "même personne" in str(e)
+        # … et B, déjà enrôlé, est reconnu même s'il ne fournit qu'une pose de côté.
+        gauche_b = _vecteur((0, 0.62), (1, 0.79))
+        try:
+            biometrie.verifier_gabarits(db, a2["id"], [("face", face_a), ("gauche", gauche_b)], True)
+            raise AssertionError("pose d'un agent déjà enrôlé acceptée")
+        except biometrie.ErreurEnrolement as e:
+            assert "EDM0001" in str(e)
+        # Une vraie pose de côté de A reste acceptée.
+        biometrie.verifier_gabarits(db, a2["id"], [("face", face_a), ("gauche", _vecteur((0, 0.8), (2, 0.6)))], True)
+
+
 def test_suppression_des_donnees_biometriques(client, admin, creer_agent):
     agent = creer_agent()
     client.post(f"/api/agents/{agent['id']}/enrolement", json=enrolement(), headers=admin)
