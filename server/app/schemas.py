@@ -177,6 +177,7 @@ class TerminalSortie(BaseModel):
 
 class TerminalCle(TerminalSortie):
     cle_api: str  # affichée une seule fois
+    url_serveur: str | None = None  # adresse à inscrire dans la configuration de l'appareil
 
 
 # --- Agents -----------------------------------------------------------------

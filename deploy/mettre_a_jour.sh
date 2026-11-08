@@ -3,6 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 git pull --ff-only
+# Adresse des bornes et téléphones (ajoutée aux installations antérieures à ce réglage)
+grep -q '^EDM_URL_PUBLIQUE=' server/.env || echo "EDM_URL_PUBLIQUE=${URL_PUBLIQUE:-http://185.215.165.43:8095}" >> server/.env
 .venv/bin/pip install --quiet -r requirements.txt
 ( cd frontend && npm ci --no-audit --no-fund --loglevel=error && npm run build --silent )
 pm2 restart deploy/ecosystem.config.cjs --update-env   # relit l'environnement (fuseau horaire)

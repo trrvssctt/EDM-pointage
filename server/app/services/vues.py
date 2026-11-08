@@ -33,7 +33,7 @@ def terminal_sortie(t: Terminal, cle: str | None = None) -> TerminalSortie:
                    actif=t.actif, dernier_contact=t.dernier_contact, adresse_ip=t.adresse_ip, version=t.version,
                    nb_en_attente=t.nb_en_attente, synchro_demandee=t.synchro_demandee, type=t.type,
                    etat=etat_terminal(t))
-    return TerminalCle(**donnees, cle_api=cle) if cle else TerminalSortie(**donnees)
+    return TerminalCle(**donnees, cle_api=cle, url_serveur=config.URL_APPAREILS or None) if cle else TerminalSortie(**donnees)
 
 
 def site_sortie(s: Site, nb_agents: int = 0) -> SiteSortie:

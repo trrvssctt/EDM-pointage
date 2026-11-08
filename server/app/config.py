@@ -15,6 +15,8 @@ DUREE_JETON_MINUTES = int(os.environ.get("EDM_DUREE_JETON_MINUTES", "480"))
 # Un terminal est considéré en ligne s'il a contacté le serveur récemment.
 DELAI_TERMINAL_EN_LIGNE_S = int(os.environ.get("EDM_DELAI_TERMINAL_EN_LIGNE_S", "120"))
 MIN_IMAGES_ENROLEMENT = int(os.environ.get("EDM_MIN_IMAGES_ENROLEMENT", "3"))
+# Adresse par laquelle les bornes et les téléphones joignent ce serveur (proposée avec chaque nouvelle clé).
+URL_APPAREILS = os.environ.get("EDM_URL_PUBLIQUE", "").rstrip("/")
 
 if not CLE_JWT or not CLE_BIOMETRIE:
     raise RuntimeError(

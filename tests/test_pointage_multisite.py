@@ -54,6 +54,14 @@ def test_nouvelle_cle_invalide_l_ancienne(client, admin):
     assert client.get("/api/terminal/configuration", headers={"X-Terminal-Key": cle}).status_code == 200
 
 
+def test_nouvelle_cle_propose_l_adresse_des_appareils(client, admin, monkeypatch):
+    from server.app import config
+    monkeypatch.setattr(config, "URL_APPAREILS", "http://203.0.113.10:8095")
+    assert client.post("/api/terminaux/2/nouvelle-cle", headers=admin).json()["url_serveur"] == "http://203.0.113.10:8095"
+    monkeypatch.setattr(config, "URL_APPAREILS", "")  # non configurée : la page propose sa propre adresse
+    assert client.post("/api/terminaux/2/nouvelle-cle", headers=admin).json()["url_serveur"] is None
+
+
 # --- Pointage multisite -----------------------------------------------------------
 def test_pointage_sur_un_site_different_du_rattachement(client, admin, creer_agent):
     creer_agent("EDM0001", site_id=1)  # rattaché au siège

@@ -226,8 +226,9 @@ function NouveauTerminal({ onFermer, onCle }: { onFermer: () => void; onCle: (t:
 function CleTerminal({ terminal: t, onFermer }: { terminal: Terminal; onFermer: () => void }) {
   const notifier = useNotifier();
   const mobile = t.type === "MOBILE";
+  // Adresse configurée sur le serveur pour les appareils (EDM_URL_PUBLIQUE), sinon celle de cette page.
   // Le téléphone doit joindre le serveur par le réseau : « localhost » ne désigne que ce PC.
-  const [url, setUrl] = useState(window.location.origin);
+  const [url, setUrl] = useState(t.url_serveur || window.location.origin);
   const toile = useRef<HTMLCanvasElement>(null);
   const config = JSON.stringify(mobile ? { url_serveur: url, code_terminal: t.code, cle_api: t.cle_api }
     : { url_serveur: url, code_terminal: t.code, cle_api: t.cle_api, camera: 0, camera_miroir: false, intervalle_synchro_s: 10,

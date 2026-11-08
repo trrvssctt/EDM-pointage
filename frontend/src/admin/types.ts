@@ -22,7 +22,7 @@ export interface Horaire { id: number; nom: string; heure_debut: string; heure_f
 export interface Terminal {
   id: number; code: string; libelle: string; site_id: number; site_nom: string; actif: boolean;
   dernier_contact: string | null; adresse_ip: string; version: string; nb_en_attente: number;
-  synchro_demandee: boolean; type: "BORNE" | "MOBILE"; etat: EtatTerminal; cle_api?: string;
+  synchro_demandee: boolean; type: "BORNE" | "MOBILE"; etat: EtatTerminal; cle_api?: string; url_serveur?: string | null;
 }
 export interface Agent {
   id: number; matricule: string; nom: string; prenom: string; nom_complet: string; fonction: string; email: string;

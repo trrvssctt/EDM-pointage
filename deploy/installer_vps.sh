@@ -66,6 +66,8 @@ if [[ ! -f server/.env ]]; then
 else
   echo "server/.env existant : conservé"
 fi
+# Adresse proposée dans la fenêtre « Clé d'accès » pour configurer bornes et téléphones
+grep -q '^EDM_URL_PUBLIQUE=' server/.env || echo "EDM_URL_PUBLIQUE=$URL_PUBLIQUE" >> server/.env
 
 etape "Dépendances Python"
 [[ -x .venv/bin/pip ]] || { rm -rf .venv; python3 -m venv .venv; }   # environnement incomplet : recréé
