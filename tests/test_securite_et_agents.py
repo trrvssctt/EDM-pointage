@@ -286,3 +286,11 @@ def test_personnalisation_de_l_organisation(client, admin):
     assert client.get("/api/organisation/logo").headers["content-type"] == "image/png"
     drh = jeton(client, "drh", "Drh@2026")
     assert client.put("/api/organisation", json={"nom": "X"}, headers=drh).status_code == 403
+
+
+def test_entetes_de_cache(client):
+    """API jamais en cache ; pages de l'interface revalidées (nouvelle version visible après une mise à jour)."""
+    assert client.get("/api/sante").headers["cache-control"] == "no-store"
+    page = client.get("/agents")
+    if page.status_code == 200:  # interface compilée (npm run build)
+        assert page.headers["cache-control"] == "no-cache" and page.headers["x-frame-options"] == "DENY"

@@ -42,6 +42,11 @@ async def entetes_securite(request, call_next):
     reponse.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
     if request.url.path.startswith("/api/"):
         reponse.headers["Cache-Control"] = "no-store"
+    elif request.url.path.startswith("/assets/"):  # fichiers nommés d'après leur contenu : jamais modifiés
+        reponse.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif reponse.headers.get("content-type", "").startswith("text/html"):
+        # Pages de l'interface : revalidées à chaque visite, la nouvelle version s'affiche après une mise à jour
+        reponse.headers["Cache-Control"] = "no-cache"
     return reponse
 
 

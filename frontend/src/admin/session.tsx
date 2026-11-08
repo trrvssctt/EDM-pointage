@@ -45,8 +45,10 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     },
     fermer: () => {
       jeton.effacer();
-      client.clear();
+      // D'abord la session (l'écran de connexion s'affiche), puis les données de l'utilisateur.
+      // Ne pas utiliser client.clear() : l'écran resterait abonné à l'ancienne session et ne changerait pas.
       client.setQueryData(["session"], null);
+      client.removeQueries({ predicate: (q) => !["session", "organisation"].includes(String(q.queryKey[0])) });
     },
   };
   return <ContexteSession.Provider value={valeur}>{children}</ContexteSession.Provider>;
