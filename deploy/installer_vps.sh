@@ -89,7 +89,7 @@ etape "Données initiales"
 EDM_URL_PUBLIQUE=$URL_PUBLIQUE .venv/bin/python -m server.seed $DEMO
 
 etape "Service PM2 (edm-pointage, 127.0.0.1:$PORT_API)"
-if pm2 describe edm-pointage >/dev/null 2>&1; then pm2 restart edm-pointage --update-env; else pm2 start deploy/ecosystem.config.cjs; fi
+if pm2 describe edm-pointage >/dev/null 2>&1; then pm2 restart deploy/ecosystem.config.cjs --update-env; else pm2 start deploy/ecosystem.config.cjs; fi
 pm2 save >/dev/null
 
 etape "Nginx (http :$PORT_PUBLIC pour bornes et mobile, https :$PORT_HTTPS pour l'administration)"

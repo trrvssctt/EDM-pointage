@@ -11,6 +11,7 @@ module.exports = {
     interpreter: "none",
     autorestart: true,
     max_memory_restart: "900M",
-    env: { PYTHONUNBUFFERED: "1" },
+    // Heures des pointages et des retards dans le fuseau du client, quel que soit celui du VPS.
+    env: { PYTHONUNBUFFERED: "1", TZ: "Africa/Bamako" },
   }],
 };
