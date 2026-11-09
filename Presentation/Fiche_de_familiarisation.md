@@ -20,7 +20,7 @@ Système de pointage biométrique multisite par reconnaissance faciale, pour Én
 |---|---|
 | Base de données | 14 tables, 3 vues de reporting (PostgreSQL 16) |
 | API centrale | 63 points d'accès, documentés en français |
-| Tests automatisés | 66 sur 66 réussis (relancés le 06/11/2026) |
+| Tests automatisés | 74 sur 74 réussis (relancés le 09/11/2026) |
 | Fiche de tests manuels | 195 cas, dont 116 de priorité haute |
 | Données de démonstration | 6 sites, 77 agents fictifs, 3 semaines d'historique |
 | Écrans | 10 pages d'administration, écran de borne, 9 écrans mobiles |
@@ -97,9 +97,12 @@ l'administrateur, à l'aide d'un QR code.
 2. Au poste RH, la webcam guide 5 poses : face, un côté, l'autre côté, haut, bas. La capture est
    automatique ; un bouton manuel apparaît après 8 s.
 3. Un contrôle de vivacité vérifie que la tête a vraiment tourné, ce qu'une photo ne peut pas faire.
-4. Le consentement est obligatoire et horodaté. Si ce visage est déjà enrôlé sous un autre matricule,
-   l'enrôlement est refusé.
-5. **Variante mobile** : un responsable photographie l'agent sur le terrain, mais l'enrôlement n'est
+4. Le consentement est obligatoire et horodaté.
+5. **Contrôle d'identité à chaque photo** :
+   - un visage déjà enrôlé sous un autre matricule est signalé tout de suite, avec son nom, et la
+     capture est bloquée ;
+   - si une autre personne prend le relais pendant les poses, la capture est refusée.
+6. **Variante mobile** : un responsable photographie l'agent sur le terrain, mais l'enrôlement n'est
    **actif qu'après validation de la DRH** sur le site. Les photos sont effacées dès la décision.
 
 **Pointage à la borne**
@@ -154,6 +157,7 @@ l'agent, et le serveur le reconnaît avec la même galerie que les bornes. Le po
 | Changer de personne pendant le défi | Revérification de l'identité à la fin du défi |
 | Pointer pour un collègue | « Ce n'est pas moi », tentatives tracées, anomalies au tableau de bord |
 | Enrôler une photo | Vivacité contrôlée à l'enrôlement, consentement en présence de l'agent |
+| Deux personnes qui se relaient pendant l'enrôlement | Chaque pose est comparée à la photo de face et aux autres agents enrôlés : capture bloquée |
 
 **Limites à assumer** : une caméra classique ne détecte pas un masque 3D réaliste ni une vidéo qui
 répondrait au bon défi. Il faudrait alors une caméra infrarouge ou de profondeur, et l'architecture
@@ -162,23 +166,49 @@ responsable et sur la traçabilité.
 
 ## 8. Démonstration
 
-### La veille ou le matin : vérifications
+### Le matin : vérifications (sur le VPS, en root)
 
-1. **Mettre le VPS à jour**, car le correctif de fuseau horaire en dépend :
+1. **Mettre le VPS à jour** :
    ```bash
    cd /opt/edm-pointage && git pull && ./deploy/mettre_a_jour.sh
    ```
-   Puis vérifier qu'un pointage de secours affiche la même heure sur le téléphone et sur le site.
-2. Ouvrir `https://185.215.165.43:8443` dans le navigateur de la démonstration, accepter le
+2. **Remettre les données de démonstration à jour.** Sans cela, le tableau de bord affiche 0 présent
+   sur 76, car l'historique fictif s'arrête au 02/11, jour de l'installation. La commande :
+   - complète les pointages des agents fictifs jusqu'à maintenant ;
+   - ajoute les anomalies du jour ;
+   - corrige l'heure des pointages mobiles faits avant le réglage du fuseau.
+
+   Elle ne touche ni aux comptes, ni aux clés, ni aux agents réellement enrôlés.
+   ```bash
+   .venv/bin/python -m server.actualiser_demo --corriger-fuseau
+   ```
+   **Relancez-la juste avant de présenter** (sans `--corriger-fuseau`), pour ajouter les pointages
+   des dernières heures. Elle peut être relancée sans risque.
+3. **Contrôler la galerie** : la commande liste les agents enrôlés avec des visages mélangés, comme
+   Assitan Sow.
+   ```bash
+   .venv/bin/python -m server.controle_galerie
+   ```
+   Pour chaque agent signalé : Agents › sa fiche › « Supprimer le gabarit biométrique ». Ne le
+   réenrôlez que si la personne est présente.
+4. **Bornes « en ligne »** : aucune borne physique ne tourne. Cette commande les fait contacter le
+   serveur toutes les 30 s pendant 4 h, comme des bornes allumées, sans rien pointer :
+   ```bash
+   nohup .venv/bin/python -m terminal.presence_bornes --serveur http://127.0.0.1:8200 > /tmp/bornes.log 2>&1 &
+   ```
+   - Pour montrer une panne : ajoutez `--sauf TRM-SEL-01`, et la borne de Sélingué reste
+     « hors ligne ».
+   - Pour l'arrêter : `pkill -f presence_bornes`.
+5. Ouvrir `https://185.215.165.43:8443` dans le navigateur de la démonstration, accepter le
    certificat, se connecter avec un compte **admin** et un compte **drh** (onglet « Démarrer ici »
    de la fiche de test).
-3. **Téléphone** : Expo lancé sur le PC, câble branché, `adb reverse tcp:8081 tcp:8081` exécuté,
+6. **Téléphone** : Expo lancé sur le PC, câble branché, `adb reverse tcp:8081 tcp:8081` exécuté,
    application ouverte et connectée. Le Samsung est déjà enregistré comme `MOB-BKO-07`.
-4. **Lumière** : bien éclairer le visage de face. L'application a déjà signalé « Lumière
+7. **Lumière** : bien éclairer le visage de face. L'application a déjà signalé « Lumière
    insuffisante » en intérieur.
-5. Préparer **un agent sans visage** pour l'enrôlement en direct, et **une personne non enrôlée**
+8. Préparer **un agent sans visage** pour l'enrôlement en direct, et **une personne non enrôlée**
    pour montrer un refus.
-6. **Plan B** : garder les captures de `livrables/semaine-3-preparation/captures/` ouvertes, au cas
+9. **Plan B** : garder les captures de `livrables/semaine-3-preparation/captures/` ouvertes, au cas
    où le réseau ferait défaut.
 
 ### Déroulé conseillé (≈ 10 minutes)
@@ -191,15 +221,20 @@ responsable et sur la traçabilité.
 | 5 | Mobile : Secours › pointer cet agent | Reconnu en quelques secondes, marqué « Secours » |
 | 6 | Site : Pointages | Heure, site, terminal, pastilles ; **multisite** si l'agent est rattaché ailleurs |
 | 7 | Mobile : personne non enrôlée | Refus, et tentative tracée |
-| 8 | Mobile : mode avion → pointer → réseau rétabli | Rien n'est perdu, aucun doublon, heure réelle conservée |
-| 9 | Rapports : changer la période, exporter le PDF | Rapport fiable, au logo de l'entreprise |
-| 10 | Utilisateurs et droits, puis journal d'audit | Confidentialité et traçabilité |
+| 8 | Site : **Poste de pointage simulé**, deux personnes devant la webcam | Même moteur que les bornes : chacun est identifié en direct (démonstration, rien n'est pointé) |
+| 9 | Mobile : mode avion → pointer → réseau rétabli | Rien n'est perdu, aucun doublon, heure réelle conservée |
+| 10 | Rapports : changer la période, exporter le PDF | Rapport fiable, au logo de l'entreprise |
+| 11 | Utilisateurs et droits, puis journal d'audit | Confidentialité et traçabilité |
 
 Pour la borne, montrer les captures, sauf si elle a été préparée et testée avant. Pour la faire
 tourner sur le PC, il faut une configuration téléchargée depuis le VPS avec l'adresse
 `http://185.215.165.43:8095`, et un environnement Python réparé (`./setup.sh`).
 
 ## 9. Questions probables, et réponses
+
+**« Ces chiffres sont-ils réels ? »**
+Non : le tableau de bord repose sur 70 agents fictifs et leur historique de démonstration. Les
+pointages faits en direct pendant la démonstration, eux, sont réels. Le dire d'emblée.
 
 **« Quel est le taux de reconnaissance ? »**
 Le moteur est validé sur nos jeux de test, mais le taux sur de vrais agents d'EDM reste à mesurer

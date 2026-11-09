@@ -69,7 +69,7 @@ PLAN (16 diapositives)
 13. Anti-fraude et ses limites : tableau « tentative / parade » (photo, vidéo, substitution, pointage
     pour un collègue). Limites assumées : masque 3D ou vidéo répondant au bon défi ; pas de défi en
     pointage de secours. Évolution possible : caméra infrarouge ou de profondeur.
-14. Validation : 66 tests automatisés sur 66 réussis ; base de 14 tables et 3 vues ; API de
+14. Validation : 74 tests automatisés sur 74 réussis ; base de 14 tables et 3 vues ; API de
     63 points d'accès ; fiche de 195 cas de test sur tous les équipements ; déploiement sur serveur
     réalisé ; essais du mobile réalisés sur téléphone Android (enrôlement validé par la DRH,
     pointage de secours, refus d'un visage inconnu).
