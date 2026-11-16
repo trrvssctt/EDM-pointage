@@ -12,7 +12,9 @@ Deux défis, tirés au hasard :
   bascule automatiquement sur le défi de rotation.
 
 Le tirage aléatoire (défi et direction) empêche de rejouer une vidéo préparée, et
-l'identité est revérifiée à la fin du défi (le visage ne doit pas changer).
+l'identité est revérifiée à la fin du défi (le visage ne doit pas changer). Une rotation
+nette dans le mauvais sens fait échouer le défi : sans cela, une vidéo où la personne
+tourne la tête de gauche à droite en boucle (sur un téléphone) réussirait à tous les coups.
 """
 from __future__ import annotations
 
@@ -72,13 +74,17 @@ class DefiVivacite:
     """Défi de rotation de la tête."""
     type = ROTATION
 
-    def __init__(self, visage_initial: Visage, camera_miroir: bool = False, direction: str | None = None):
+    def __init__(self, visage_initial: Visage, camera_miroir: bool = False, direction: str | None = None,
+                 images_requises: int = IMAGES_CONSECUTIVES, duree_max: float = DUREE_MAX):
         self.direction = direction or random.choice((DROITE, GAUCHE))
         self.reference = rapport_lacet(visage_initial)
         self.debut = time.monotonic()
+        self.duree_max = duree_max
+        self._images_requises = images_requises
         self._miroir = camera_miroir
         self._tenu = 0
         self.reussi = False
+        self.echoue = False  # rotation dans le mauvais sens : vidéo rejouée suspectée
 
     @property
     def consigne(self) -> str:
@@ -86,18 +92,23 @@ class DefiVivacite:
 
     @property
     def expire(self) -> bool:
-        return not self.reussi and time.monotonic() - self.debut > DUREE_MAX
+        return not self.reussi and (self.echoue or time.monotonic() - self.debut > self.duree_max)
 
     def mettre_a_jour(self, visage: Visage, image: np.ndarray | None = None) -> bool:
-        """À appeler à chaque image. Renvoie True quand le défi est réussi."""
+        """À appeler à chaque image. Renvoie True quand le défi est réussi (False définitif si echoue)."""
+        if self.reussi or self.echoue:
+            return self.reussi
         delta = rapport_lacet(visage) - self.reference
         # Caméra non inversée : la droite de l'agent apparaît à gauche de
         # l'image, donc tourner vers sa droite fait diminuer le rapport.
         if self._miroir:
             delta = -delta
         attendu = -delta if self.direction == DROITE else delta
+        if attendu <= -ECART_REQUIS:
+            self.echoue = True
+            return False
         self._tenu = self._tenu + 1 if attendu >= ECART_REQUIS else 0
-        if self._tenu >= IMAGES_CONSECUTIVES:
+        if self._tenu >= self._images_requises:
             self.reussi = True
         return self.reussi
 
@@ -108,15 +119,17 @@ class DefiClignement:
     direction = None
     consigne = "Clignez des yeux"
 
-    def __init__(self):
+    def __init__(self, duree_max: float = DUREE_MAX):
         self.debut = time.monotonic()
+        self.duree_max = duree_max
         self.reussi = False
+        self.echoue = False
         self._ouverts_vus = 0
         self._fermes = 0
 
     @property
     def expire(self) -> bool:
-        return not self.reussi and time.monotonic() - self.debut > DUREE_MAX
+        return not self.reussi and time.monotonic() - self.debut > self.duree_max
 
     def mettre_a_jour(self, visage: Visage, image: np.ndarray | None = None) -> bool:
         if image is None:

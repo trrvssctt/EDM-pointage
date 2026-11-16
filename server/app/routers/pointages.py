@@ -24,7 +24,8 @@ rapports = exiger_droit("rapports.generer")
 
 MOTIFS_FRAUDE = {"ECHEC_VIVACITE", "CHANGEMENT_VISAGE"}
 LIBELLES_MOTIF = {
-    "VISAGE_INCONNU": "Visage inconnu", "ECHEC_VIVACITE": "Fraude suspectée", "CHANGEMENT_VISAGE": "Fraude suspectée",
+    "VISAGE_INCONNU": "Visage inconnu", "ECHEC_VIVACITE": "Fraude : photo, écran ou vidéo",
+    "CHANGEMENT_VISAGE": "Usurpation d'identité",
     "SITE_NON_AUTORISE": "Site non autorisé", "IDENTITE_CONTESTEE": "Identité contestée",
     "APPEL_SUPERVISEUR": "Appel superviseur",
 }
@@ -221,7 +222,8 @@ def tableau_de_bord(jour: date | None = None, u: Utilisateur = Depends(consultat
     statuts = Counter(j.statut for j in journees)
     attendus = len(journees)
     presents = statuts["PRESENT"] + statuts["RETARD"]
-    terminaux = db.query(Terminal).options(joinedload(Terminal.site)).order_by(Terminal.code).all()
+    terminaux = (db.query(Terminal).options(joinedload(Terminal.site)).filter(Terminal.type != TypeAppareil.WEB)
+                 .order_by(Terminal.code).all())
     en_attente = [t for t in terminaux if t.actif and t.nb_en_attente]
 
     # Présence par site de rattachement
@@ -252,10 +254,14 @@ def tableau_de_bord(jour: date | None = None, u: Utilisateur = Depends(consultat
                       TentativeRejetee.traitee.is_(False))
               .order_by(TentativeRejetee.horodatage.desc()).limit(3)):
         fraude = t.motif in MOTIFS_FRAUDE
+        cible = f" · identité de {t.matricule_suppose}" if fraude and t.matricule_suppose else ""
         anomalies.append({"type": "FRAUDE" if fraude else "SUPERVISEUR", "id": t.id,
-                          "titre": "Tentative de fraude suspectée" if fraude else "Appel du superviseur",
+                          "titre": ("Tentative d'usurpation d'identité" if t.motif == "CHANGEMENT_VISAGE"
+                                    else "Tentative de fraude suspectée" if fraude else "Appel du superviseur"),
                           "detail": f"{t.terminal.code} · {t.horodatage:%H:%M} · "
-                                    + ("photo ou écran détecté" if fraude else "assistance demandée sur le terminal"),
+                                    + ({"ECHEC_VIVACITE": "photo, écran ou vidéo présenté",
+                                        "CHANGEMENT_VISAGE": "visage changé pendant le contrôle"}.get(t.motif)
+                                       or "assistance demandée sur le terminal") + cible,
                           "lien": {"page": "pointages", "alerte": "FRAUDE", "date": jour.isoformat()}})
     veille = jour - timedelta(days=1)
     sans_sortie = [j for j in calculer_journees(db, veille, veille, agents) if "Entrée sans sortie" in j.anomalies]

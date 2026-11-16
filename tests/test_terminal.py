@@ -36,6 +36,15 @@ def test_vivacite_echoue_avec_une_photo_plane():
 def test_vivacite_echoue_dans_le_mauvais_sens():
     defi = DefiVivacite(visage_synthetique(150), direction=GAUCHE)
     assert not any(defi.mettre_a_jour(visage_synthetique(120)) for _ in range(10))
+    assert defi.echoue and defi.expire  # échec immédiat, sans attendre la fin du délai
+
+
+def test_video_qui_tourne_la_tete_dans_les_deux_sens_echoue():
+    """Vidéo rejouée sur un téléphone : la tête tourne d'un côté puis de l'autre, quelle que soit la consigne."""
+    for direction in (DROITE, GAUCHE):
+        defi = DefiVivacite(visage_synthetique(150), direction=direction)
+        x_nez = (125, 125, 125, 175, 175, 175) if direction == GAUCHE else (175, 175, 175, 125, 125, 125)
+        assert not any(defi.mettre_a_jour(visage_synthetique(x)) for x in x_nez) and defi.echoue
 
 
 def test_clignement_exige_une_fermeture_franche(monkeypatch):

@@ -1,24 +1,30 @@
 /** Poste de pointage simulé : la webcam de ce poste filme, le serveur identifie en temps réel chaque personne
- *  présente dans le champ. Démonstration et contrôle de la galerie : aucun pointage n'est enregistré. */
+ *  présente dans le champ. Démonstration et contrôle de la galerie : aucun pointage n'est enregistré.
+ *  Être reconnu ne suffit pas : une photo ou un écran est reconnu aussi. La personne doit tourner la tête dans
+ *  le sens demandé (tiré au hasard) pour que sa vivacité soit prouvée et qu'elle compte comme un passage. */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Cctv, Info, Play, Square } from "lucide-react";
+import { ArrowLeft, ArrowRight, Cctv, Info, Play, Square } from "lucide-react";
 import { api } from "../api";
 import { Avatar, Bouton, Carte, EnTetePage, Encart, MessageErreur, Pastille, type Ton } from "../composants/ui";
 import { initiales } from "../../commun/format";
 
 type Statut = "RECONNU" | "AMBIGU" | "INCONNU" | "TROP_LOIN";
+type Vivacite = "VERIFIEE" | "DEFI" | "ECHEC" | "NON_VERIFIEE";
 interface FicheAgent { matricule: string; nom_complet: string; service: string; site_rattachement: string }
 interface VisageDetecte {
   boite: [number, number, number, number]; statut: Statut; agent: FicheAgent | null; score: number | null;
-  confiance: number | null; autre: (FicheAgent & { score: number }) | null;
+  confiance: number | null; autre: (FicheAgent & { score: number }) | null; vivacite: Vivacite | null;
 }
-interface Reponse { visages: VisageDetecte[]; largeur: number; hauteur: number; agents_enroles: number; seuil: number; duree_ms: number }
+interface Defi { matricule: string; direction: "droite" | "gauche"; consigne: string; restant: number }
+interface Reponse { visages: VisageDetecte[]; defi: Defi | null; fraude_signalee: boolean; largeur: number; hauteur: number; agents_enroles: number; seuil: number; duree_ms: number }
 interface Passage { cle: string; heure: Date; agent: FicheAgent; confiance: number }
 
 const COULEURS: Record<Statut, string> = { RECONNU: "#15803D", AMBIGU: "#B5530A", INCONNU: "#B42318", TROP_LOIN: "#64748B" };
 const LIBELLES: Record<Statut, [string, Ton]> = {
   RECONNU: ["Reconnu", "succes"], AMBIGU: ["Ambigu", "alerte"], INCONNU: ["Inconnu", "danger"], TROP_LOIN: ["Trop loin", "neutre"],
 };
+// Visage reconnu dont la vivacité n'est pas (encore) prouvée : orange ; photo, écran ou vidéo suspecté : rouge.
+const COULEUR_A_PROUVER = "#B5530A", COULEUR_FRAUDE = "#B42318";
 const ABSENCE_MS = 30_000;  // une personne revenue après 30 s d'absence compte comme un nouveau passage
 const PAUSE_MS = 120;       // pause entre deux images envoyées au serveur
 
@@ -68,10 +74,15 @@ export function ReconnaissanceDirecte() {
     for (const f of r.visages) {
       const [x, y, w, hb] = f.boite;
       const gx = l - (dx + (x + w) * echelle), gy = dy + y * echelle, gw = w * echelle, gh = hb * echelle;
-      const couleur = COULEURS[f.statut];
+      const couleur = f.statut !== "RECONNU" ? COULEURS[f.statut]
+        : f.vivacite === "VERIFIEE" ? COULEURS.RECONNU : f.vivacite === "ECHEC" ? COULEUR_FRAUDE : COULEUR_A_PROUVER;
       g.lineWidth = 3; g.strokeStyle = couleur;
       g.strokeRect(gx, gy, gw, gh);
-      const texte = f.statut === "RECONNU" ? `${f.agent?.nom_complet} · ${f.confiance} %`
+      const texte = f.statut === "RECONNU"
+        ? f.vivacite === "VERIFIEE" ? `${f.agent?.nom_complet} · ${f.confiance} % · vivant`
+          : f.vivacite === "ECHEC" ? "Photo ou écran suspecté"
+          : f.vivacite === "DEFI" ? `${f.agent?.nom_complet} · tournez la tête`
+          : `${f.agent?.nom_complet} · seul(e) devant la caméra`
         : f.statut === "AMBIGU" ? `${f.agent?.nom_complet} ou ${f.autre?.nom_complet} ?`
         : f.statut === "INCONNU" ? "Visage inconnu" : "Approchez-vous";
       const largeurTexte = g.measureText(texte).width + 14;
@@ -85,6 +96,7 @@ export function ReconnaissanceDirecte() {
   useEffect(() => {
     if (!actif) return;
     let continuer = true, premiere = true, compteur = 0, depuis = performance.now();
+    const session = crypto.randomUUID();
     (async () => {
       while (continuer) {
         const v = video.current, c = capture.current;
@@ -93,7 +105,7 @@ export function ReconnaissanceDirecte() {
           c.width = largeur; c.height = Math.round(v.videoHeight * largeur / v.videoWidth);
           c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height);
           try {
-            const r = await api.post<Reponse>("/api/reconnaissance/identifier", { image: c.toDataURL("image/jpeg", 0.8), debut: premiere });
+            const r = await api.post<Reponse>("/api/reconnaissance/identifier", { image: c.toDataURL("image/jpeg", 0.8), debut: premiere, session });
             premiere = false;
             if (!continuer) break;
             setErreur("");
@@ -117,7 +129,7 @@ export function ReconnaissanceDirecte() {
   const enregistrerPassages = (r: Reponse) => {
     const maintenant = Date.now(), nouveaux: Passage[] = [];
     for (const f of r.visages) {
-      if (f.statut !== "RECONNU" || !f.agent) continue;
+      if (f.statut !== "RECONNU" || f.vivacite !== "VERIFIEE" || !f.agent) continue;
       const dernier = vus.current.get(f.agent.matricule);
       if (!dernier || maintenant - dernier > ABSENCE_MS) {
         nouveaux.push({ cle: `${f.agent.matricule}-${maintenant}`, heure: new Date(), agent: f.agent, confiance: f.confiance ?? 0 });
@@ -130,6 +142,8 @@ export function ReconnaissanceDirecte() {
   const arreter = () => { setActif(false); setReponse(null); };
   const visages = actif ? reponse?.visages ?? [] : [];
   const compte = (s: Statut) => visages.filter((v) => v.statut === s).length;
+  const defi = actif ? reponse?.defi ?? null : null;
+  const fraude = visages.some((v) => v.vivacite === "ECHEC");
 
   return (
     <>
@@ -148,6 +162,13 @@ export function ReconnaissanceDirecte() {
                   <Cctv size={44} strokeWidth={1.5} /><span className="text-[15px]">Caméra arrêtée</span>
                 </div>}
             <canvas ref={calque} className="pointer-events-none absolute inset-0 h-full w-full" />
+            {(defi || fraude) && (
+              <div className={`absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-4 py-3 text-[17px] font-semibold text-white ${defi ? "bg-[#B5530A]/90" : "bg-[#B42318]/90"}`}>
+                {defi?.direction === "gauche" && <ArrowLeft size={26} strokeWidth={2.5} />}
+                <span>{defi ? `${defi.consigne} · ${Math.ceil(defi.restant)} s` : "Photo, écran ou vidéo suspecté : tentative de fraude signalée dans l’historique des pointages"}</span>
+                {defi?.direction === "droite" && <ArrowRight size={26} strokeWidth={2.5} />}
+              </div>
+            )}
             <canvas ref={capture} className="hidden" />
           </div>
           {erreur && <div className="mt-4"><MessageErreur erreur={erreur} /></div>}
@@ -155,6 +176,7 @@ export function ReconnaissanceDirecte() {
             {(Object.keys(LIBELLES) as Statut[]).map((s) => (
               <Pastille key={s} ton={LIBELLES[s][1]}>{LIBELLES[s][0]} : {compte(s)}</Pastille>
             ))}
+            <Pastille ton="info">Vivacité prouvée : {visages.filter((v) => v.vivacite === "VERIFIEE").length}</Pastille>
           </div>
         </Carte>
 
@@ -168,18 +190,21 @@ export function ReconnaissanceDirecte() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{v.agent && v.statut !== "INCONNU" ? v.agent.nom_complet : LIBELLES[v.statut][0]}</p>
                     <p className="truncate text-xs text-encre-douce">
-                      {v.statut === "RECONNU" && v.agent ? `${v.agent.matricule} · ${v.agent.service}`
+                      {v.statut === "RECONNU" && v.agent ? `${v.agent.matricule} · ${
+                        v.vivacite === "VERIFIEE" ? "vivacité prouvée" : v.vivacite === "ECHEC" ? "photo ou écran suspecté"
+                        : v.vivacite === "DEFI" ? "défi de vivacité en cours" : "vivacité non vérifiée (plusieurs personnes)"}`
                         : v.statut === "AMBIGU" ? `ou ${v.autre?.nom_complet ?? v.autre?.matricule} : écart trop faible`
                         : v.statut === "INCONNU" ? `ressemblance ${v.score?.toFixed(2)} < seuil ${reponse?.seuil}` : "visage trop petit"}
                     </p>
                   </div>
-                  <Pastille ton={LIBELLES[v.statut][1]}>{v.statut === "RECONNU" ? `${v.confiance} %` : LIBELLES[v.statut][0]}</Pastille>
+                  <Pastille ton={v.statut !== "RECONNU" ? LIBELLES[v.statut][1] : v.vivacite === "VERIFIEE" ? "succes"
+                    : v.vivacite === "ECHEC" ? "danger" : "alerte"}>{v.statut === "RECONNU" ? `${v.confiance} %` : LIBELLES[v.statut][0]}</Pastille>
                 </li>
               ))}
             </ul>
           </Carte>
           <Carte titre="Passages" action={passages.length > 0 && <Bouton onClick={() => { setPassages([]); vus.current.clear(); }}>Effacer</Bouton>}>
-            {passages.length === 0 && <p className="text-sm text-encre-douce">Chaque personne reconnue s’inscrit ici à son arrivée dans le champ.</p>}
+            {passages.length === 0 && <p className="text-sm text-encre-douce">Chaque personne reconnue dont la vivacité est prouvée s’inscrit ici.</p>}
             <ul className="flex max-h-[320px] flex-col overflow-y-auto">
               {passages.map((p) => (
                 <li key={p.cle} className="flex items-center justify-between gap-3 border-t border-bord py-2 text-sm first:border-t-0">
@@ -191,8 +216,10 @@ export function ReconnaissanceDirecte() {
             </ul>
           </Carte>
           <Encart icone={Info}>
-            Démonstration : aucun pointage n’est enregistré. La borne de pointage ajoute un défi de vivacité
-            (une seule personne à la fois) pour écarter les photos et les écrans. Les images ne sont pas conservées.
+            Démonstration : aucun pointage n’est enregistré. Une photo ou un écran est reconnu comme la personne
+            qu’il montre : seule une rotation de la tête dans le sens demandé prouve une personne réelle. Le défi
+            se lance quand une seule personne est dans le champ. Un échec est signalé comme une tentative de fraude
+            ou d’usurpation d’identité (appareil POSTE-WEB). Les images ne sont pas conservées.
           </Encart>
         </div>
       </div>

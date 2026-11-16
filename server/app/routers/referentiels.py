@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, joinedload
 
 from server.app.database import get_db
-from server.app.models import Agent, Horaire, LotSynchronisation, Service, Site, Terminal, Utilisateur
+from server.app.models import Agent, Horaire, LotSynchronisation, Service, Site, Terminal, TypeAppareil, Utilisateur
 from server.app.schemas import (HoraireEntree, HoraireSortie, ServiceEntree, ServiceSortie, SiteEntree, SiteSortie,
                                 TerminalCle, TerminalEntree, TerminalModification, TerminalSortie)
 from server.app.securite import (auditer, empreinte_cle, exiger_droit, generer_cle_terminal, utilisateur_courant)
@@ -111,7 +111,8 @@ def creer_horaire(donnees: HoraireEntree, request: Request, acteur: Utilisateur 
 # --- Terminaux --------------------------------------------------------------
 @router.get("/terminaux", response_model=list[TerminalSortie])
 def lister_terminaux(_: Utilisateur = Depends(utilisateur_courant), db: Session = Depends(get_db)):
-    return [terminal_sortie(t) for t in db.query(Terminal).options(joinedload(Terminal.site)).order_by(Terminal.code)]
+    return [terminal_sortie(t) for t in db.query(Terminal).options(joinedload(Terminal.site))
+            .filter(Terminal.type != TypeAppareil.WEB).order_by(Terminal.code)]
 
 
 @router.post("/terminaux", response_model=TerminalCle, status_code=201)

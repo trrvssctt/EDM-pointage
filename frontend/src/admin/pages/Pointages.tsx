@@ -124,7 +124,7 @@ export function Pointages() {
 function Alerte({ ligne }: { ligne: LignePointage }) {
   if (!ligne.alerte) return <span className="text-encre-douce">–</span>;
   if (ligne.alerte === "HORS_RATTACHEMENT") return <Pastille ton="info" icone={Building2}>Hors rattachement</Pastille>;
-  if (ligne.alerte === "FRAUDE") return <Pastille ton="danger" icone={AlertTriangle}>Fraude suspectée</Pastille>;
+  if (ligne.alerte === "FRAUDE") return <Pastille ton="danger" icone={AlertTriangle}>{ligne.libelle_alerte ?? "Fraude suspectée"}</Pastille>;
   if (ligne.alerte === "ANNULE") return <Pastille icone={Ban}>Annulé par l’agent</Pastille>;
   return <Pastille ton={ligne.alerte === "VISAGE_INCONNU" ? "neutre" : "alerte"}>{ligne.libelle_alerte}</Pastille>;
 }

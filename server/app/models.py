@@ -37,6 +37,7 @@ class TypePointage(str, enum.Enum):
 class TypeAppareil(str, enum.Enum):
     BORNE = "BORNE"    # terminal fixe de pointage
     MOBILE = "MOBILE"  # téléphone de l'application terrain (enrôlement, pointage de secours)
+    WEB = "WEB"        # poste de pointage simulé (navigateur) : appareil virtuel, créé automatiquement, sans clé
 
 
 class StatutDemande(str, enum.Enum):

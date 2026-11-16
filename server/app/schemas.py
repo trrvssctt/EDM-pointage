@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from server.app.models import Role, TypeAppareil, TypePointage, TypeSite
 
@@ -151,6 +151,13 @@ class TerminalEntree(BaseModel):
     libelle: str = ""
     site_id: int
     type: TypeAppareil = TypeAppareil.BORNE
+
+    @field_validator("type")
+    @classmethod
+    def _pas_de_poste_web(cls, v: TypeAppareil) -> TypeAppareil:
+        if v == TypeAppareil.WEB:
+            raise ValueError("le poste web est créé automatiquement")
+        return v
 
 
 class TerminalModification(BaseModel):
