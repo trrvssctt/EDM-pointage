@@ -3,9 +3,15 @@
 Démonstration et contrôle de la galerie : aucun pointage n'est enregistré. Les images ne sont ni conservées ni
 journalisées.
 
-Vivacité : être reconnu ne suffit pas. Une photo ou un écran montrant un agent est reconnu comme l'agent ;
-seule une rotation de la tête dans un sens tiré au hasard, suivie d'un retour face à la caméra (common.vivacite),
-prouve une personne réelle. Le défi est lancé quand une seule personne reconnue est dans le champ ; il suit
+Vivacité : être reconnu ne suffit pas. Une photo ou un écran montrant un agent est reconnu comme l'agent.
+
+1. Vivacité passive : le navigateur analyse la vidéo à ~30 images/s avec MediaPipe Face Landmarker
+   (frontend/src/admin/vivacitePassive.ts) et compte les clignements naturels (toutes les 3 à 5 s, sans y
+   penser) ; une photo ne cligne pas. Un clignement survenu après la première reconnaissance de la personne,
+   seule dans le champ, prouve sa vivacité, sans consigne. Ce compteur vient du navigateur : il est fiable
+   ici (poste d'un administrateur connecté), pas face à un utilisateur qui maîtrise son navigateur.
+2. Secours : sans clignement au bout de 5 s (ou si le navigateur ne peut pas charger MediaPipe), défi de
+   rotation de la tête dans un sens tiré au hasard, suivi d'un retour face à la caméra (common.vivacite). Le défi est lancé quand une seule personne reconnue est dans le champ ; il suit
 ensuite ce visage même s'il n'est plus reconnu une fois tourné (SFace est moins fiable de profil), et l'identité
 est revérifiée de face à la fin. La vivacité prouvée reste acquise tant que la personne reste visible. Les modèles « image seule » gratuits (MiniFASNet, détection de téléphone) ont été essayés : ils
 laissent passer une photo affichée sur un téléphone, d'où ce défi.
@@ -25,7 +31,7 @@ import uuid
 
 import cv2
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -52,6 +58,8 @@ DUREE_PRESENCE = 3.0   # la vivacité prouvée est perdue après 3 s hors du cha
 # En dessous de cette variation du lacet sur tout le défi, le visage est rigide : photo ou écran. Au-dessus,
 # la personne a bougé sans réussir le défi (consigne mal comprise) : non prouvé, mais pas signalé.
 AMPLITUDE_PHOTO = 0.06
+OBSERVATION = 5.0      # secondes d'attente d'un clignement naturel avant le défi de rotation
+ECART_DEFI = 0.10      # rotation demandée au navigateur : un léger quart de tour suffit
 DUREE_SESSION = 120.0
 DELAI_SIGNALEMENT = 60.0  # au plus un signalement par personne présentée et par minute
 CODE_POSTE_WEB = "POSTE-WEB"
@@ -62,10 +70,17 @@ _sessions: dict[tuple[int, str], dict] = {}
 _verrou_sessions = threading.Lock()
 
 
+class Passif(BaseModel):
+    """Vivacité passive mesurée par le navigateur (MediaPipe) au moment de l'envoi de l'image."""
+    clignements: int = Field(ge=0)  # clignements vus depuis l'ouverture, une seule personne dans le champ
+    visages: int = Field(ge=0)      # visages vus par MediaPipe sur la dernière image
+
+
 class ImageDirect(BaseModel):
     image: str
     debut: bool = False  # première image d'une session : tracée dans le journal d'audit
     session: str = ""    # identifiant tiré par le navigateur : suivi du défi de vivacité d'une image à l'autre
+    passif: Passif | None = None  # absent si MediaPipe n'a pas pu être chargé : défi de rotation seul
 
 
 def _session(utilisateur_id: int, cle: str) -> dict:
@@ -74,39 +89,57 @@ def _session(utilisateur_id: int, cle: str) -> dict:
         for k in [k for k, v in _sessions.items() if maintenant - v["vu"] > DUREE_SESSION]:
             del _sessions[k]
         s = _sessions.setdefault((utilisateur_id, cle), {"vu": maintenant, "verifies": {}, "echecs": {}, "defi": None,
-                                                          "signales": {}})
+                                                          "signales": {}, "arrivees": {}})
         s["vu"] = maintenant
         return s
 
 
 def _vivacite(s: dict, galerie: Galerie, agents: dict[str, dict], m, image, presents: list[tuple[dict, object]],
-              reconnus: list[tuple[dict, object, str]], fraudes: list[tuple[str, str, float]]) -> dict | None:
-    """Met à jour le défi de la session et renseigne entree["vivacite"] des visages concernés.
+              reconnus: list[tuple[dict, object, str]], fraudes: list[tuple[str, str, float]],
+              passif: Passif | None = None) -> dict | None:
+    """Met à jour la vivacité de la session et renseigne entree["vivacite"] des visages concernés.
 
-    VERIFIEE : rotation et retour réussis par la même personne ; DEFI : consigne en cours ; ECHEC : photo ou
-    écran (visage rigide) ou visage changé, signalé dans fraudes (motif, matricule présenté, score) ;
+    VERIFIEE : clignement naturel, ou rotation et retour réussis, par la même personne ; OBSERVATION : seule dans
+    le champ, en attente d'un clignement ; DEFI : consigne de rotation en cours ; ECHEC : visage rigide sans
+    clignement (photo ou écran) ou visage changé, signalé dans fraudes (motif, matricule présenté, score) ;
     NON_PROUVEE : délai écoulé alors que la personne bougeait, non signalé ; NON_VERIFIEE : plusieurs personnes
-    dans le champ, aucun défi possible."""
+    dans le champ."""
     maintenant = time.monotonic()
     s["verifies"] = {k: t for k, t in s["verifies"].items() if maintenant - t <= DUREE_PRESENCE}
     s["echecs"] = {k: v for k, v in s["echecs"].items() if v[0] > maintenant}
+    # Arrivée de chaque personne reconnue : instant et compteur de clignements du navigateur à ce moment-là.
+    s["arrivees"] = {k: v for k, v in s["arrivees"].items() if maintenant - v["vu"] <= DUREE_PRESENCE}
+    seul = len(presents) == 1 and (passif is None or passif.visages <= 1)
     for entree, _, matricule in reconnus:
+        arrivee = s["arrivees"].setdefault(matricule, {"t": maintenant, "clignements": passif.clignements if passif else 0})
+        arrivee["vu"] = maintenant
+        if passif is not None and passif.clignements < arrivee["clignements"]:
+            arrivee["clignements"] = passif.clignements  # page rechargée : le compteur du navigateur repart de zéro
         if matricule in s["verifies"]:
             s["verifies"][matricule] = maintenant
             entree["vivacite"] = "VERIFIEE"
         elif matricule in s["echecs"]:
             entree["vivacite"] = s["echecs"][matricule][1]
+        elif seul and passif is not None and passif.clignements > arrivee["clignements"]:
+            # Clignement naturel depuis l'arrivée de cette personne, seule dans le champ : vivacité prouvée.
+            s["verifies"][matricule] = maintenant
+            entree["vivacite"] = "VERIFIEE"
+            if s["defi"] and s["defi"]["matricule"] == matricule:
+                s["defi"] = None
         else:
             entree["vivacite"] = "NON_VERIFIEE"
 
     defi = s["defi"]
     if defi is None:
-        if len(presents) != 1 or len(reconnus) != 1 or reconnus[0][0]["vivacite"] != "NON_VERIFIEE":
+        if not seul or len(reconnus) != 1 or reconnus[0][0]["vivacite"] != "NON_VERIFIEE":
             return None
-        _, visage, matricule = reconnus[0]
+        entree, visage, matricule = reconnus[0]
+        if passif is not None and maintenant - s["arrivees"][matricule]["t"] < OBSERVATION:
+            entree["vivacite"] = "OBSERVATION"
+            return None
         s["defi"] = defi = {"matricule": matricule, "vu": maintenant, "defi": DefiVivacite(
             visage, direction=random.choice((DROITE, GAUCHE)), images_requises=IMAGES_DEFI, duree_max=DUREE_DEFI,
-            retour_face=True)}
+            retour_face=True, ecart_requis=ECART_DEFI)}
     if len(presents) > 1 or (not presents and maintenant - defi["vu"] > DUREE_PRESENCE):
         s["defi"] = None  # quelqu'un d'autre est entré dans le champ, ou la personne est partie : défi abandonné
         return None
@@ -118,6 +151,13 @@ def _vivacite(s: dict, galerie: Galerie, agents: dict[str, dict], m, image, pres
         entree["vivacite"] = "DEFI"
         if entree["agent"] is None or entree["statut"] != "RECONNU":
             entree["agent"] = agents.get(matricule)  # visage tourné, moins bien reconnu : c'est toujours lui
+            # Un clignement pendant le défi suffit aussi, même si le visage tourné n'est plus reconnu.
+            arrivee = s["arrivees"].get(matricule)
+            if arrivee and passif is not None and passif.visages <= 1 and passif.clignements > arrivee["clignements"]:
+                s["defi"] = None
+                s["verifies"][matricule] = maintenant
+                entree["vivacite"] = "VERIFIEE"
+                return None
         if d.mettre_a_jour(visage):
             s["defi"] = None
             # Revérification de l'identité sur le visage revenu de face (même seuil que la borne).
@@ -132,12 +172,14 @@ def _vivacite(s: dict, galerie: Galerie, agents: dict[str, dict], m, image, pres
             return None
     if d.expire:
         s["defi"] = None
+        # Ni clignement (sinon la vivacité serait déjà prouvée) ni mouvement : photo ou écran.
         if d.amplitude < AMPLITUDE_PHOTO:
             fraudes.append(("ECHEC_VIVACITE", matricule, (entree or {}).get("score") or 0.0))
             etat = "ECHEC"
         else:
             etat = "NON_PROUVEE"
         s["echecs"][matricule] = (maintenant + DUREE_ECHEC, etat)
+        s["arrivees"].pop(matricule, None)  # nouvel essai : nouvelle période d'observation
         if entree is not None:
             entree["vivacite"] = etat
         return None
@@ -199,7 +241,8 @@ def identifier(donnees: ImageDirect, request: Request, u: Utilisateur = Depends(
                db: Session = Depends(get_db)):
     """Identifie chaque visage d'une image de la webcam : RECONNU, AMBIGU, INCONNU ou TROP_LOIN, avec sa position.
 
-    Chaque visage reconnu porte aussi son état de vivacité (VERIFIEE, DEFI, ECHEC, NON_PROUVEE, NON_VERIFIEE) ;
+    Chaque visage reconnu porte aussi son état de vivacité (VERIFIEE, OBSERVATION, DEFI, ECHEC, NON_PROUVEE,
+    NON_VERIFIEE) ;
     « defi » donne la consigne en cours quand une seule personne est dans le champ."""
     debut = time.perf_counter()
     try:
@@ -237,7 +280,7 @@ def identifier(donnees: ImageDirect, request: Request, u: Utilisateur = Depends(
             presents.append((entree, v))
         session = _session(u.id, donnees.session)
         fraudes: list[tuple[str, str, float]] = []
-        defi = _vivacite(session, galerie, agents, m, image, presents, reconnus, fraudes)
+        defi = _vivacite(session, galerie, agents, m, image, presents, reconnus, fraudes, donnees.passif)
     signale = _signaler(db, session, u, request, fraudes) if fraudes else False
     return {"visages": visages, "defi": defi, "fraude_signalee": signale, "largeur": image.shape[1], "hauteur": image.shape[0],
             "agents_enroles": len(galerie), "seuil": SEUIL_SIMILARITE,

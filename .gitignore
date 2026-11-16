@@ -2,6 +2,8 @@
 .venv/
 frontend/node_modules/
 frontend/dist/
+# Moteur et modèle MediaPipe, préparés par frontend/scripts/preparer-mediapipe.mjs
+frontend/public/mediapipe/
 __pycache__/
 .pytest_cache/
 

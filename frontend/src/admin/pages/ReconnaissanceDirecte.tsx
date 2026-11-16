@@ -1,15 +1,17 @@
 /** Poste de pointage simulé : la webcam de ce poste filme, le serveur identifie en temps réel chaque personne
  *  présente dans le champ. Démonstration et contrôle de la galerie : aucun pointage n'est enregistré.
- *  Être reconnu ne suffit pas : une photo ou un écran est reconnu aussi. La personne doit tourner la tête dans
- *  le sens demandé (tiré au hasard) pour que sa vivacité soit prouvée et qu'elle compte comme un passage. */
+ *  Être reconnu ne suffit pas : une photo ou un écran est reconnu aussi. La vivacité est prouvée sans consigne par
+ *  un clignement naturel, vu dans le navigateur (vivacitePassive.ts) ; à défaut au bout de 5 s, la personne tourne
+ *  légèrement la tête dans le sens demandé puis revient de face. Seules les personnes vivantes comptent comme passage. */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Cctv, Info, Play, Square } from "lucide-react";
+import { ArrowLeft, ArrowRight, Cctv, Eye, EyeOff, Info, Play, Square } from "lucide-react";
 import { api } from "../api";
 import { Avatar, Bouton, Carte, EnTetePage, Encart, MessageErreur, Pastille, type Ton } from "../composants/ui";
 import { initiales } from "../../commun/format";
+import { VivacitePassive, type EtatPassif } from "../vivacitePassive";
 
 type Statut = "RECONNU" | "AMBIGU" | "INCONNU" | "TROP_LOIN";
-type Vivacite = "VERIFIEE" | "DEFI" | "ECHEC" | "NON_PROUVEE" | "NON_VERIFIEE";
+type Vivacite = "VERIFIEE" | "OBSERVATION" | "DEFI" | "ECHEC" | "NON_PROUVEE" | "NON_VERIFIEE";
 interface FicheAgent { matricule: string; nom_complet: string; service: string; site_rattachement: string }
 interface VisageDetecte {
   boite: [number, number, number, number]; statut: Statut; agent: FicheAgent | null; score: number | null;
@@ -31,6 +33,7 @@ const COULEUR_A_PROUVER = "#B5530A", COULEUR_FRAUDE = "#B42318";
 // Affichage d'un visage dont la vivacité est suivie (y compris tourné et momentanément moins bien reconnu).
 const VIVACITE: Record<Vivacite, { couleur: string; ton: Ton; etiquette: (nom: string) => string; detail: string }> = {
   VERIFIEE: { couleur: COULEURS.RECONNU, ton: "succes", etiquette: (n) => `${n} · vivant`, detail: "vivacité prouvée" },
+  OBSERVATION: { couleur: COULEUR_A_PROUVER, ton: "alerte", etiquette: (n) => `${n} · regardez la caméra`, detail: "vivacité en cours de vérification" },
   DEFI: { couleur: COULEUR_A_PROUVER, ton: "alerte", etiquette: (n) => `${n} · suivez la consigne`, detail: "défi de vivacité en cours" },
   ECHEC: { couleur: COULEUR_FRAUDE, ton: "danger", etiquette: () => "Photo ou écran suspecté", detail: "tentative de fraude signalée" },
   NON_PROUVEE: { couleur: COULEUR_A_PROUVER, ton: "alerte", etiquette: (n) => `${n} · vivacité non prouvée`, detail: "consigne non suivie à temps : nouvel essai" },
@@ -49,6 +52,35 @@ export function ReconnaissanceDirecte() {
   const [cadence, setCadence] = useState(0);
   const [passages, setPassages] = useState<Passage[]>([]);
   const vus = useRef(new Map<string, number>());
+  // Vivacité passive : analyse de chaque image dans le navigateur (null si MediaPipe n'a pas pu être chargé)
+  const passif = useRef<VivacitePassive | null>(null);
+  const [etatPassif, setEtatPassif] = useState<EtatPassif | null>(null);
+  const [passifIndisponible, setPassifIndisponible] = useState(false);
+
+  useEffect(() => {
+    if (!actif) return;
+    let continuer = true, image = 0, dernierAffichage = 0;
+    VivacitePassive.creer().then((p) => {
+      if (!continuer) { p.fermer(); return; }
+      passif.current = p;
+      const suivante = (t: number) => {
+        if (!continuer) return;
+        const v = video.current;
+        if (v) {
+          try {
+            const e = p.analyser(v, t);
+            if (t - dernierAffichage > 250) { dernierAffichage = t; setEtatPassif({ ...e }); }
+          } catch { /* image non prête : la suivante sera analysée */ }
+        }
+        image = requestAnimationFrame(suivante);
+      };
+      image = requestAnimationFrame(suivante);
+    }).catch(() => { if (continuer) setPassifIndisponible(true); });
+    return () => {
+      continuer = false; cancelAnimationFrame(image);
+      passif.current?.fermer(); passif.current = null; setEtatPassif(null); setPassifIndisponible(false);
+    };
+  }, [actif]);
 
   // Caméra : ouverte au démarrage, libérée à l'arrêt ou en quittant la page
   useEffect(() => {
@@ -115,7 +147,10 @@ export function ReconnaissanceDirecte() {
           c.width = largeur; c.height = Math.round(v.videoHeight * largeur / v.videoWidth);
           c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height);
           try {
-            const r: Reponse = await api.post<Reponse>("/api/reconnaissance/identifier", { image: c.toDataURL("image/jpeg", enDefi ? 0.7 : 0.8), debut: premiere, session });
+            const r: Reponse = await api.post<Reponse>("/api/reconnaissance/identifier", {
+              image: c.toDataURL("image/jpeg", enDefi ? 0.7 : 0.8), debut: premiere, session,
+              passif: passif.current ? { clignements: passif.current.etat.clignements, visages: passif.current.etat.visages } : null,
+            });
             premiere = false;
             enDefi = r.defi !== null;
             if (!continuer) break;
@@ -166,7 +201,7 @@ export function ReconnaissanceDirecte() {
           : <Bouton grand variante="primaire" icone={Play} onClick={() => { setErreur(""); setActif(true); }}>Démarrer la caméra</Bouton>} />
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Carte titre="Champ de la caméra" sousTitre={actif && reponse
-          ? `${reponse.agents_enroles} agents enrôlés · ${cadence || "…"} images/s · analyse ${reponse.duree_ms} ms par image`
+          ? `${reponse.agents_enroles} agents enrôlés · ${cadence || "…"} images/s vers le serveur · analyse ${reponse.duree_ms} ms par image`
           : "Plusieurs personnes peuvent être identifiées en même temps"}>
           <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-[#233868] to-[#0F1A3A]">
             {actif
@@ -193,6 +228,21 @@ export function ReconnaissanceDirecte() {
             ))}
             <Pastille ton="info">Vivacité prouvée : {visages.filter((v) => v.vivacite === "VERIFIEE").length}</Pastille>
           </div>
+          {actif && (
+            <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-encre-douce">
+              {passifIndisponible ? "Vivacité passive indisponible sur ce navigateur : défi de rotation de la tête uniquement."
+                : !etatPassif ? "Chargement de l’analyse des yeux (une seule fois, environ 18 Mo)…"
+                : <>
+                    <span className="inline-flex items-center gap-1.5">
+                      {etatPassif.attentif ? <Eye size={15} className="text-succes" /> : <EyeOff size={15} className="text-alerte" />}
+                      {etatPassif.visages === 0 ? "Aucun visage" : etatPassif.visages > 1 ? `${etatPassif.visages} visages`
+                        : etatPassif.attentif ? "Yeux ouverts, regard vers l’écran" : etatPassif.yeuxOuverts ? "Regard détourné" : "Yeux fermés"}
+                    </span>
+                    <span>Clignements : {etatPassif.clignements}</span>
+                    <span className="font-mono text-xs">tête {Math.round(etatPassif.lacet)}° / {Math.round(etatPassif.tangage)}°</span>
+                  </>}
+            </p>
+          )}
         </Carte>
 
         <div className="flex flex-col gap-5">
@@ -230,8 +280,9 @@ export function ReconnaissanceDirecte() {
           </Carte>
           <Encart icone={Info}>
             Démonstration : aucun pointage n’est enregistré. Une photo ou un écran est reconnu comme la personne
-            qu’il montre : il faut tourner la tête dans le sens de la flèche puis revenir face à la caméra. Le défi
-            se lance quand une seule personne est dans le champ. Un visage resté parfaitement immobile (photo, écran)
+            qu’il montre. Un clignement naturel, vu dans le navigateur, prouve une personne réelle sans rien lui
+            demander ; à défaut au bout de 5 s, il faut tourner légèrement la tête dans le sens de la flèche puis
+            revenir face à la caméra. La vérification se fait quand une seule personne est dans le champ. Un visage resté parfaitement immobile (photo, écran)
             ou qui change pendant le défi est signalé comme tentative de fraude ou d’usurpation d’identité
             (appareil POSTE-WEB). Les images ne sont pas conservées.
           </Encart>

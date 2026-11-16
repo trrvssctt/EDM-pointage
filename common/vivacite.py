@@ -81,13 +81,15 @@ class DefiVivacite:
     type = ROTATION
 
     def __init__(self, visage_initial: Visage, camera_miroir: bool = False, direction: str | None = None,
-                 images_requises: int = IMAGES_CONSECUTIVES, duree_max: float = DUREE_MAX, retour_face: bool = False):
+                 images_requises: int = IMAGES_CONSECUTIVES, duree_max: float = DUREE_MAX, retour_face: bool = False,
+                 ecart_requis: float = ECART_REQUIS):
         self.direction = direction or random.choice((DROITE, GAUCHE))
         self.reference = rapport_lacet(visage_initial)
         self.debut = time.monotonic()
         self.duree_max = duree_max
         self._images_requises = images_requises
         self._retour_face = retour_face
+        self._ecart = ecart_requis
         # Caméra non inversée : la droite de l'agent apparaît à gauche de l'image, donc tourner vers sa droite
         # fait diminuer le rapport. _sens ramène la direction demandée à « le rapport augmente ».
         self._sens = (-1.0 if self.direction == DROITE else 1.0) * (-1.0 if camera_miroir else 1.0)
@@ -122,16 +124,16 @@ class DefiVivacite:
         self._lacets.append(lacet)
         valeur = self._sens * lacet
         if not self.tourne:
-            self.sens_inverse = valeur <= self._sens * self.reference - ECART_REQUIS
+            self.sens_inverse = valeur <= self._sens * self.reference - self._ecart
             self._plancher = min(self._plancher, valeur)
-            self._tenu = self._tenu + 1 if valeur - self._plancher >= ECART_REQUIS else 0
+            self._tenu = self._tenu + 1 if valeur - self._plancher >= self._ecart else 0
             if self._tenu >= self._images_requises:
                 self.tourne, self.sens_inverse = True, False
                 self._sommet = valeur
                 self.reussi = not self._retour_face
             return self.reussi
         self._sommet = max(self._sommet, valeur)
-        if self._sommet - valeur >= ECART_REQUIS * 0.7:  # nettement revenu vers la caméra
+        if self._sommet - valeur >= self._ecart * 0.7:  # nettement revenu vers la caméra
             self.reussi = True
         return self.reussi
 

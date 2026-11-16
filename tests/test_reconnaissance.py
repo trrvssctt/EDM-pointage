@@ -144,3 +144,37 @@ def test_le_defi_suit_le_visage_tourne_meme_s_il_n_est_plus_reconnu(client, admi
     r = envoyer()
     assert r["visages"][0]["statut"] == "INCONNU" and r["visages"][0]["vivacite"] == "DEFI"
     assert r["visages"][0]["agent"]["matricule"] == "EDM0007" and r["defi"]["matricule"] == "EDM0007"
+
+
+# --- Vivacité passive : clignements comptés par le navigateur (MediaPipe) ------------------------------
+def _envoyer_passif(client, admin, image, session, clignements, visages=1):
+    return client.post("/api/reconnaissance/identifier", headers=admin, json={
+        "image": image, "session": session, "passif": {"clignements": clignements, "visages": visages}}).json()
+
+
+def test_un_clignement_naturel_prouve_la_vivacite_sans_consigne(client, admin, creer_agent):
+    image = _photo_reconnue(client, admin, creer_agent, "EDM0008")
+    r = _envoyer_passif(client, admin, image, "cligne", 4)  # 4 clignements vus avant l'arrivée : ne comptent pas
+    assert r["visages"][0]["vivacite"] == "OBSERVATION" and r["defi"] is None
+    assert _envoyer_passif(client, admin, image, "cligne", 4)["visages"][0]["vivacite"] == "OBSERVATION"
+    r = _envoyer_passif(client, admin, image, "cligne", 5)
+    assert r["visages"][0]["vivacite"] == "VERIFIEE" and r["defi"] is None and r["fraude_signalee"] is False
+
+
+def test_sans_clignement_le_defi_de_rotation_prend_le_relais(client, admin, creer_agent, monkeypatch):
+    image = _photo_reconnue(client, admin, creer_agent, "EDM0009")
+    monkeypatch.setattr("server.app.routers.reconnaissance.OBSERVATION", 0.5)
+    assert _envoyer_passif(client, admin, image, "fige", 0)["visages"][0]["vivacite"] == "OBSERVATION"
+    time.sleep(0.6)
+    r = _envoyer_passif(client, admin, image, "fige", 0)
+    assert r["visages"][0]["vivacite"] == "DEFI" and r["defi"]["matricule"] == "EDM0009"
+    r = _envoyer_passif(client, admin, image, "fige", 1)  # un clignement pendant le défi suffit aussi
+    assert r["visages"][0]["vivacite"] == "VERIFIEE" and r["defi"] is None
+
+
+def test_un_clignement_avec_plusieurs_visages_ne_compte_pas(client, admin, creer_agent):
+    """La personne réelle qui cligne à côté d'une photo ne prouve pas la vivacité de la photo."""
+    image = _photo_reconnue(client, admin, creer_agent, "EDM0010")
+    _envoyer_passif(client, admin, image, "deux", 0, visages=2)
+    r = _envoyer_passif(client, admin, image, "deux", 1, visages=2)
+    assert r["visages"][0]["vivacite"] == "NON_VERIFIEE"
