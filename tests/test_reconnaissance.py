@@ -79,12 +79,15 @@ def test_une_photo_reconnue_ne_prouve_pas_la_vivacite(client, admin, creer_agent
 def test_rotation_dans_le_bon_sens_prouve_la_vivacite(client, admin, creer_agent, monkeypatch):
     image = _photo_reconnue(client, admin, creer_agent, "EDM0003")
     monkeypatch.setattr("server.app.routers.reconnaissance.random.choice", lambda choix: "droite")
-    lacets = iter([0.5, 0.5, 0.3, 0.3])  # de face, puis nez vers la gauche de l'image : tête tournée vers sa droite
+    # De face, nez vers la gauche de l'image (tête tournée vers sa droite) sur deux images, puis retour de face.
+    lacets = iter([0.5, 0.5, 0.3, 0.3, 0.48])
     monkeypatch.setattr("common.vivacite.rapport_lacet", lambda _: next(lacets))
     envoyer = lambda: client.post("/api/reconnaissance/identifier", json={"image": image, "session": "vivant"},
                                   headers=admin).json()
-    etats = [envoyer()["visages"][0]["vivacite"] for _ in range(4)]
-    assert etats == ["DEFI", "DEFI", "VERIFIEE", "VERIFIEE"]
+    reponses = [envoyer() for _ in range(4)]  # la 1re image sert aussi de référence au défi
+    assert [x["visages"][0]["vivacite"] for x in reponses] == ["DEFI", "DEFI", "DEFI", "VERIFIEE"]
+    assert reponses[1]["defi"]["phase"] == "ROTATION" and reponses[2]["defi"]["phase"] == "RETOUR"
+    assert not any(x["fraude_signalee"] for x in reponses)
 
 
 def test_pas_de_defi_avec_plusieurs_personnes(client, admin, creer_agent):
@@ -98,12 +101,12 @@ def test_pas_de_defi_avec_plusieurs_personnes(client, admin, creer_agent):
 def test_visage_change_pendant_le_defi_signale_une_usurpation(client, admin, creer_agent, monkeypatch):
     image = _photo_reconnue(client, admin, creer_agent, "EDM0005")
     monkeypatch.setattr("server.app.routers.reconnaissance.random.choice", lambda choix: "droite")
-    lacets = iter([0.5, 0.5, 0.3, 0.3])
+    lacets = iter([0.5, 0.5, 0.3, 0.3, 0.48])
     monkeypatch.setattr("common.vivacite.rapport_lacet", lambda _: next(lacets))
-    monkeypatch.setattr("common.moteur_facial.Galerie.score_agent", lambda *_: 0.1)  # une autre personne a tourné la tête
+    monkeypatch.setattr("common.moteur_facial.Galerie.score_agent", lambda *_: 0.1)  # une autre personne est revenue
     envoyer = lambda: client.post("/api/reconnaissance/identifier", json={"image": image, "session": "usurpation"},
                                   headers=admin).json()
-    r = [envoyer() for _ in range(3)][-1]
+    r = [envoyer() for _ in range(4)][-1]
     assert r["visages"][0]["vivacite"] == "ECHEC" and r["fraude_signalee"] is True
     ligne = client.get("/api/pointages", params={"alerte": "FRAUDE"}, headers=admin).json()["elements"][0]
     assert (ligne["motif"], ligne["matricule"], ligne["libelle_alerte"]) == ("CHANGEMENT_VISAGE", "EDM0005", "Usurpation d'identité")
@@ -113,3 +116,31 @@ def test_le_poste_web_ne_se_cree_pas_a_la_main(client, admin):
     site = client.get("/api/sites", headers=admin).json()[0]["id"]
     r = client.post("/api/terminaux", json={"code": "X-WEB", "site_id": site, "type": "WEB"}, headers=admin)
     assert r.status_code == 422
+
+
+def test_personne_qui_bouge_sans_suivre_la_consigne_n_est_pas_signalee(client, admin, creer_agent, monkeypatch):
+    """Délai écoulé alors que la tête bougeait : vivacité non prouvée, nouvel essai, mais pas de fraude."""
+    image = _photo_reconnue(client, admin, creer_agent, "EDM0006")
+    monkeypatch.setattr("server.app.routers.reconnaissance.DUREE_DEFI", 1.0)
+    monkeypatch.setattr("server.app.routers.reconnaissance.random.choice", lambda choix: "droite")
+    lacets = iter([0.5, 0.5, 0.6, 0.66, 0.7, 0.6])  # la tête tourne, mais du mauvais côté
+    monkeypatch.setattr("common.vivacite.rapport_lacet", lambda _: next(lacets))
+    envoyer = lambda: client.post("/api/reconnaissance/identifier", json={"image": image, "session": "distrait"},
+                                  headers=admin).json()
+    reponses = [envoyer() for _ in range(4)]
+    assert reponses[-1]["defi"]["sens_inverse"] is True
+    time.sleep(1.1)
+    r = envoyer()
+    assert r["visages"][0]["vivacite"] == "NON_PROUVEE" and r["fraude_signalee"] is False
+    assert client.get("/api/pointages", params={"alerte": "FRAUDE"}, headers=admin).json()["total"] == 0
+
+
+def test_le_defi_suit_le_visage_tourne_meme_s_il_n_est_plus_reconnu(client, admin, creer_agent, monkeypatch):
+    image = _photo_reconnue(client, admin, creer_agent, "EDM0007")
+    envoyer = lambda: client.post("/api/reconnaissance/identifier", json={"image": image, "session": "profil"},
+                                  headers=admin).json()
+    assert envoyer()["defi"]["matricule"] == "EDM0007"
+    monkeypatch.setattr("common.moteur_facial.Galerie.classement", lambda *_a, **_k: [])  # visage tourné : non reconnu
+    r = envoyer()
+    assert r["visages"][0]["statut"] == "INCONNU" and r["visages"][0]["vivacite"] == "DEFI"
+    assert r["visages"][0]["agent"]["matricule"] == "EDM0007" and r["defi"]["matricule"] == "EDM0007"

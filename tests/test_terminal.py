@@ -36,15 +36,30 @@ def test_vivacite_echoue_avec_une_photo_plane():
 def test_vivacite_echoue_dans_le_mauvais_sens():
     defi = DefiVivacite(visage_synthetique(150), direction=GAUCHE)
     assert not any(defi.mettre_a_jour(visage_synthetique(120)) for _ in range(10))
-    assert defi.echoue and defi.expire  # échec immédiat, sans attendre la fin du délai
+    assert defi.sens_inverse  # indication « dans l'autre sens » à l'écran
 
 
-def test_video_qui_tourne_la_tete_dans_les_deux_sens_echoue():
-    """Vidéo rejouée sur un téléphone : la tête tourne d'un côté puis de l'autre, quelle que soit la consigne."""
-    for direction in (DROITE, GAUCHE):
-        defi = DefiVivacite(visage_synthetique(150), direction=direction)
-        x_nez = (125, 125, 125, 175, 175, 175) if direction == GAUCHE else (175, 175, 175, 125, 125, 125)
-        assert not any(defi.mettre_a_jour(visage_synthetique(x)) for x in x_nez) and defi.echoue
+def test_vivacite_reussie_apres_un_depart_du_mauvais_cote():
+    """Gauche et droite se confondent : la progression part de la position la plus opposée."""
+    defi = DefiVivacite(visage_synthetique(150), direction=DROITE)
+    assert [defi.mettre_a_jour(visage_synthetique(x)) for x in (165, 170, 150, 140, 140)][-1] is True
+
+
+def test_vivacite_avec_retour_face_a_la_camera():
+    defi = DefiVivacite(visage_synthetique(150), direction=DROITE, retour_face=True)
+    assert not any(defi.mettre_a_jour(visage_synthetique(x)) for x in (135, 125, 125))
+    assert defi.tourne and defi.consigne == "Revenez face à la caméra"
+    assert defi.mettre_a_jour(visage_synthetique(140)) is True
+
+
+def test_amplitude_distingue_une_photo_d_une_personne():
+    photo = DefiVivacite(visage_synthetique(150))
+    for d in (0, 1, -1, 2, 0, 1, -2, 0, 1, 9):  # tremblement des points de repère, une image aberrante
+        photo.mettre_a_jour(visage_synthetique(150 + d))
+    personne = DefiVivacite(visage_synthetique(150))
+    for x in (150, 158, 164, 160, 147, 140, 152):
+        personne.mettre_a_jour(visage_synthetique(x))
+    assert photo.amplitude < 0.06 < personne.amplitude
 
 
 def test_clignement_exige_une_fermeture_franche(monkeypatch):

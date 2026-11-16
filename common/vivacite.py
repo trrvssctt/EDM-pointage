@@ -12,9 +12,9 @@ Deux défis, tirés au hasard :
   bascule automatiquement sur le défi de rotation.
 
 Le tirage aléatoire (défi et direction) empêche de rejouer une vidéo préparée, et
-l'identité est revérifiée à la fin du défi (le visage ne doit pas changer). Une rotation
-nette dans le mauvais sens fait échouer le défi : sans cela, une vidéo où la personne
-tourne la tête de gauche à droite en boucle (sur un téléphone) réussirait à tous les coups.
+l'identité est revérifiée à la fin du défi (le visage ne doit pas changer). Limite : une
+vidéo où la personne tourne la tête des deux côtés, rejouée sur un téléphone, peut réussir
+le défi de rotation ; la photo ou l'écran immobile, lui, est écarté.
 """
 from __future__ import annotations
 
@@ -71,44 +71,67 @@ def yeux_ouverts(image: np.ndarray, visage: Visage) -> int:
 
 
 class DefiVivacite:
-    """Défi de rotation de la tête."""
+    """Défi de rotation de la tête.
+
+    La progression est mesurée depuis la position la plus opposée vue pendant le défi : une personne qui part
+    du mauvais côté (gauche et droite se confondent facilement) puis tourne dans le bon sens réussit. Avec
+    retour_face, elle doit ensuite revenir vers la caméra : l'identité est alors revérifiée sur un visage de face,
+    plus fiable qu'un visage tourné. amplitude (variation totale du lacet) distingue une photo ou un écran,
+    parfaitement rigides, d'une personne qui bouge sans suivre la consigne."""
     type = ROTATION
 
     def __init__(self, visage_initial: Visage, camera_miroir: bool = False, direction: str | None = None,
-                 images_requises: int = IMAGES_CONSECUTIVES, duree_max: float = DUREE_MAX):
+                 images_requises: int = IMAGES_CONSECUTIVES, duree_max: float = DUREE_MAX, retour_face: bool = False):
         self.direction = direction or random.choice((DROITE, GAUCHE))
         self.reference = rapport_lacet(visage_initial)
         self.debut = time.monotonic()
         self.duree_max = duree_max
         self._images_requises = images_requises
-        self._miroir = camera_miroir
+        self._retour_face = retour_face
+        # Caméra non inversée : la droite de l'agent apparaît à gauche de l'image, donc tourner vers sa droite
+        # fait diminuer le rapport. _sens ramène la direction demandée à « le rapport augmente ».
+        self._sens = (-1.0 if self.direction == DROITE else 1.0) * (-1.0 if camera_miroir else 1.0)
+        self._plancher = self._sommet = self._sens * self.reference
+        self._lacets = [self.reference]
         self._tenu = 0
+        self.tourne = False       # rotation dans le bon sens obtenue (phase de retour si retour_face)
+        self.sens_inverse = False  # dernière image : tête tournée du mauvais côté (indication à l'écran)
         self.reussi = False
-        self.echoue = False  # rotation dans le mauvais sens : vidéo rejouée suspectée
 
     @property
     def consigne(self) -> str:
+        if self.tourne:
+            return "Revenez face à la caméra"
         return f"Tournez lentement la tête vers la {self.direction}"
 
     @property
     def expire(self) -> bool:
-        return not self.reussi and (self.echoue or time.monotonic() - self.debut > self.duree_max)
+        return not self.reussi and time.monotonic() - self.debut > self.duree_max
+
+    @property
+    def amplitude(self) -> float:
+        """Variation du lacet pendant le défi, entre les 10e et 90e centiles pour ignorer le tremblement des
+        points de repère (un pixel d'écart sur le nez change le rapport de 0,02) : quasi nulle pour une photo."""
+        return float(np.percentile(self._lacets, 90) - np.percentile(self._lacets, 10))
 
     def mettre_a_jour(self, visage: Visage, image: np.ndarray | None = None) -> bool:
-        """À appeler à chaque image. Renvoie True quand le défi est réussi (False définitif si echoue)."""
-        if self.reussi or self.echoue:
+        """À appeler à chaque image. Renvoie True quand le défi est réussi."""
+        if self.reussi:
+            return True
+        lacet = rapport_lacet(visage)
+        self._lacets.append(lacet)
+        valeur = self._sens * lacet
+        if not self.tourne:
+            self.sens_inverse = valeur <= self._sens * self.reference - ECART_REQUIS
+            self._plancher = min(self._plancher, valeur)
+            self._tenu = self._tenu + 1 if valeur - self._plancher >= ECART_REQUIS else 0
+            if self._tenu >= self._images_requises:
+                self.tourne, self.sens_inverse = True, False
+                self._sommet = valeur
+                self.reussi = not self._retour_face
             return self.reussi
-        delta = rapport_lacet(visage) - self.reference
-        # Caméra non inversée : la droite de l'agent apparaît à gauche de
-        # l'image, donc tourner vers sa droite fait diminuer le rapport.
-        if self._miroir:
-            delta = -delta
-        attendu = -delta if self.direction == DROITE else delta
-        if attendu <= -ECART_REQUIS:
-            self.echoue = True
-            return False
-        self._tenu = self._tenu + 1 if attendu >= ECART_REQUIS else 0
-        if self._tenu >= self._images_requises:
+        self._sommet = max(self._sommet, valeur)
+        if self._sommet - valeur >= ECART_REQUIS * 0.7:  # nettement revenu vers la caméra
             self.reussi = True
         return self.reussi
 
@@ -123,7 +146,6 @@ class DefiClignement:
         self.debut = time.monotonic()
         self.duree_max = duree_max
         self.reussi = False
-        self.echoue = False
         self._ouverts_vus = 0
         self._fermes = 0
 

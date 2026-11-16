@@ -4,13 +4,14 @@ Démonstration et contrôle de la galerie : aucun pointage n'est enregistré. Le
 journalisées.
 
 Vivacité : être reconnu ne suffit pas. Une photo ou un écran montrant un agent est reconnu comme l'agent ;
-seule une rotation de la tête dans un sens tiré au hasard (common.vivacite) prouve une personne réelle. Le défi
-est lancé quand une seule personne est dans le champ ; la vivacité prouvée reste acquise tant que la personne
-reste visible. Les modèles « image seule » gratuits (MiniFASNet, détection de téléphone) ont été essayés : ils
+seule une rotation de la tête dans un sens tiré au hasard, suivie d'un retour face à la caméra (common.vivacite),
+prouve une personne réelle. Le défi est lancé quand une seule personne reconnue est dans le champ ; il suit
+ensuite ce visage même s'il n'est plus reconnu une fois tourné (SFace est moins fiable de profil), et l'identité
+est revérifiée de face à la fin. La vivacité prouvée reste acquise tant que la personne reste visible. Les modèles « image seule » gratuits (MiniFASNet, détection de téléphone) ont été essayés : ils
 laissent passer une photo affichée sur un téléphone, d'où ce défi.
 
-Un échec est signalé comme une tentative de fraude (ECHEC_VIVACITE : photo, écran ou vidéo) ou d'usurpation
-d'identité (CHANGEMENT_VISAGE : visage changé pendant le défi), avec l'agent dont l'identité était présentée,
+Sont signalés comme tentative de fraude (ECHEC_VIVACITE) un visage resté parfaitement rigide pendant tout le
+défi (photo ou écran) et comme usurpation d'identité (CHANGEMENT_VISAGE) un visage différent à la fin du défi, avec l'agent dont l'identité était présentée,
 dans l'historique des pointages et le tableau de bord, comme pour une borne. L'appareil est le terminal virtuel
 POSTE-WEB.
 """
@@ -43,11 +44,14 @@ MARGE_AMBIGUITE = 0.06
 LARGEUR_MIN = 60   # pixels : visage trop éloigné en dessous
 MAX_VISAGES = 10
 
-# Défi de vivacité adapté au navigateur (environ une image par seconde) : 2 images tenues, 10 s maximum.
+# Défi de vivacité adapté au navigateur (1 à 3 images par seconde) : 2 images tenues, 12 s maximum.
 IMAGES_DEFI = 2
-DUREE_DEFI = 10.0
-DUREE_ECHEC = 4.0      # affichage de l'échec avant un nouveau défi
-DUREE_PRESENCE = 3.0   # la vivacité prouvée est perdue après 3 s hors du champ
+DUREE_DEFI = 12.0
+DUREE_ECHEC = 4.0      # affichage d'un échec avant un nouveau défi
+DUREE_PRESENCE = 3.0   # la vivacité prouvée est perdue après 3 s hors du champ ; le défi est abandonné de même
+# En dessous de cette variation du lacet sur tout le défi, le visage est rigide : photo ou écran. Au-dessus,
+# la personne a bougé sans réussir le défi (consigne mal comprise) : non prouvé, mais pas signalé.
+AMPLITUDE_PHOTO = 0.06
 DUREE_SESSION = 120.0
 DELAI_SIGNALEMENT = 60.0  # au plus un signalement par personne présentée et par minute
 CODE_POSTE_WEB = "POSTE-WEB"
@@ -75,52 +79,70 @@ def _session(utilisateur_id: int, cle: str) -> dict:
         return s
 
 
-def _vivacite(s: dict, galerie: Galerie, m, image, unique, reconnus: list[tuple[dict, object, str]],
-              fraudes: list[tuple[str, str, float]]) -> dict | None:
-    """Met à jour le défi de la session et renseigne entree["vivacite"] pour chaque visage reconnu.
+def _vivacite(s: dict, galerie: Galerie, agents: dict[str, dict], m, image, presents: list[tuple[dict, object]],
+              reconnus: list[tuple[dict, object, str]], fraudes: list[tuple[str, str, float]]) -> dict | None:
+    """Met à jour le défi de la session et renseigne entree["vivacite"] des visages concernés.
 
-    VERIFIEE : rotation réussie (personne réelle) ; DEFI : consigne en cours ; ECHEC : photo, écran ou vidéo
-    suspecté ; NON_VERIFIEE : plusieurs personnes dans le champ, aucun défi possible. Chaque échec est ajouté à
-    fraudes : (motif, matricule présenté, score)."""
+    VERIFIEE : rotation et retour réussis par la même personne ; DEFI : consigne en cours ; ECHEC : photo ou
+    écran (visage rigide) ou visage changé, signalé dans fraudes (motif, matricule présenté, score) ;
+    NON_PROUVEE : délai écoulé alors que la personne bougeait, non signalé ; NON_VERIFIEE : plusieurs personnes
+    dans le champ, aucun défi possible."""
     maintenant = time.monotonic()
     s["verifies"] = {k: t for k, t in s["verifies"].items() if maintenant - t <= DUREE_PRESENCE}
-    s["echecs"] = {k: t for k, t in s["echecs"].items() if t > maintenant}
+    s["echecs"] = {k: v for k, v in s["echecs"].items() if v[0] > maintenant}
     for entree, _, matricule in reconnus:
         if matricule in s["verifies"]:
             s["verifies"][matricule] = maintenant
             entree["vivacite"] = "VERIFIEE"
         elif matricule in s["echecs"]:
-            entree["vivacite"] = "ECHEC"
+            entree["vivacite"] = s["echecs"][matricule][1]
         else:
             entree["vivacite"] = "NON_VERIFIEE"
+
     defi = s["defi"]
-    if not unique or len(reconnus) != 1 or reconnus[0][0]["vivacite"] != "NON_VERIFIEE":
-        s["defi"] = None
-        return None
-    entree, visage, matricule = reconnus[0]
-    if defi is None or defi["matricule"] != matricule:
-        s["defi"] = defi = {"matricule": matricule,
-                            "defi": DefiVivacite(visage, direction=random.choice((DROITE, GAUCHE)),
-                                                 images_requises=IMAGES_DEFI, duree_max=DUREE_DEFI)}
-    d: DefiVivacite = defi["defi"]
-    if d.mettre_a_jour(visage):
-        s["defi"] = None
-        # La personne n'a pas changé pendant le défi (même revérification que la borne).
-        score_final = galerie.score_agent(matricule, m.gabarit(image, visage))
-        if score_final >= SEUIL_SIMILARITE * 0.85:
-            s["verifies"][matricule] = maintenant
-            entree["vivacite"] = "VERIFIEE"
+    if defi is None:
+        if len(presents) != 1 or len(reconnus) != 1 or reconnus[0][0]["vivacite"] != "NON_VERIFIEE":
             return None
-        fraudes.append(("CHANGEMENT_VISAGE", matricule, score_final))
-    elif d.expire:
-        fraudes.append(("ECHEC_VIVACITE", matricule, entree["score"] or 0.0))
-    if s["defi"] is None or d.expire:
-        s["defi"] = None
-        s["echecs"][matricule] = maintenant + DUREE_ECHEC
-        entree["vivacite"] = "ECHEC"
+        _, visage, matricule = reconnus[0]
+        s["defi"] = defi = {"matricule": matricule, "vu": maintenant, "defi": DefiVivacite(
+            visage, direction=random.choice((DROITE, GAUCHE)), images_requises=IMAGES_DEFI, duree_max=DUREE_DEFI,
+            retour_face=True)}
+    if len(presents) > 1 or (not presents and maintenant - defi["vu"] > DUREE_PRESENCE):
+        s["defi"] = None  # quelqu'un d'autre est entré dans le champ, ou la personne est partie : défi abandonné
         return None
-    entree["vivacite"] = "DEFI"
+    matricule, d = defi["matricule"], defi["defi"]
+    entree = None
+    if presents:
+        entree, visage = presents[0]
+        defi["vu"] = maintenant
+        entree["vivacite"] = "DEFI"
+        if entree["agent"] is None or entree["statut"] != "RECONNU":
+            entree["agent"] = agents.get(matricule)  # visage tourné, moins bien reconnu : c'est toujours lui
+        if d.mettre_a_jour(visage):
+            s["defi"] = None
+            # Revérification de l'identité sur le visage revenu de face (même seuil que la borne).
+            score_final = galerie.score_agent(matricule, m.gabarit(image, visage))
+            if score_final >= SEUIL_SIMILARITE * 0.85:
+                s["verifies"][matricule] = maintenant
+                entree["vivacite"] = "VERIFIEE"
+                return None
+            fraudes.append(("CHANGEMENT_VISAGE", matricule, score_final))
+            s["echecs"][matricule] = (maintenant + DUREE_ECHEC, "ECHEC")
+            entree["vivacite"] = "ECHEC"
+            return None
+    if d.expire:
+        s["defi"] = None
+        if d.amplitude < AMPLITUDE_PHOTO:
+            fraudes.append(("ECHEC_VIVACITE", matricule, (entree or {}).get("score") or 0.0))
+            etat = "ECHEC"
+        else:
+            etat = "NON_PROUVEE"
+        s["echecs"][matricule] = (maintenant + DUREE_ECHEC, etat)
+        if entree is not None:
+            entree["vivacite"] = etat
+        return None
     return {"matricule": matricule, "direction": d.direction, "consigne": d.consigne,
+            "phase": "RETOUR" if d.tourne else "ROTATION", "sens_inverse": d.sens_inverse,
             "restant": max(0.0, round(d.duree_max - (maintenant - d.debut), 1))}
 
 
@@ -177,8 +199,8 @@ def identifier(donnees: ImageDirect, request: Request, u: Utilisateur = Depends(
                db: Session = Depends(get_db)):
     """Identifie chaque visage d'une image de la webcam : RECONNU, AMBIGU, INCONNU ou TROP_LOIN, avec sa position.
 
-    Chaque visage reconnu porte aussi son état de vivacité (VERIFIEE, DEFI, ECHEC, NON_VERIFIEE) ; « defi »
-    donne la consigne en cours quand une seule personne est dans le champ."""
+    Chaque visage reconnu porte aussi son état de vivacité (VERIFIEE, DEFI, ECHEC, NON_PROUVEE, NON_VERIFIEE) ;
+    « defi » donne la consigne en cours quand une seule personne est dans le champ."""
     debut = time.perf_counter()
     try:
         image = decoder_image(donnees.image)
@@ -189,7 +211,7 @@ def identifier(donnees: ImageDirect, request: Request, u: Utilisateur = Depends(
         db.commit()
     galerie, agents = _galerie(db)
     m = biometrie.moteur()
-    visages, reconnus = [], []
+    visages, reconnus, presents = [], [], []
     with biometrie._verrou:
         detectes = sorted((v for v in m.detecter(image) if v.score >= 0.7), key=lambda v: v.largeur, reverse=True)
         for v in detectes[:MAX_VISAGES]:
@@ -212,9 +234,10 @@ def identifier(donnees: ImageDirect, request: Request, u: Utilisateur = Depends(
                     else:
                         reconnus.append((entree, v, meilleur[0]))
             visages.append(entree)
+            presents.append((entree, v))
         session = _session(u.id, donnees.session)
         fraudes: list[tuple[str, str, float]] = []
-        defi = _vivacite(session, galerie, m, image, len(detectes) == 1, reconnus, fraudes)
+        defi = _vivacite(session, galerie, agents, m, image, presents, reconnus, fraudes)
     signale = _signaler(db, session, u, request, fraudes) if fraudes else False
     return {"visages": visages, "defi": defi, "fraude_signalee": signale, "largeur": image.shape[1], "hauteur": image.shape[0],
             "agents_enroles": len(galerie), "seuil": SEUIL_SIMILARITE,
